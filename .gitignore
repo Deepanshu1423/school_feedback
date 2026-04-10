@@ -1,0 +1,85 @@
+# =========================
+# Dependencies
+# =========================
+node_modules/
+
+# =========================
+# Build / Output
+# =========================
+dist/
+build/
+.vite/
+
+# =========================
+# Environment files
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Logs
+# =========================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# Runtime files
+# =========================
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# =========================
+# Coverage
+# =========================
+coverage/
+
+# =========================
+# Cache files
+# =========================
+.cache/
+.parcel-cache/
+.eslintcache
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Editor / IDE
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# Temporary files
+# =========================
+*.tmp
+*.temp
+
+# =========================
+# Optional local database/export files
+# =========================
+*.sql
+*.sqlite
+*.sqlite3
+
+# =========================
+# Optional upload/storage folders
+# Ignore only if generated at runtime
+# =========================
+uploads/
+storage/
+
+# =========================
+# Misc
+# =========================
+.vercel
