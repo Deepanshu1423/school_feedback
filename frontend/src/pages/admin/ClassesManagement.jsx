@@ -2,12 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "../../api/axios";
 
 const ClassesManagement = () => {
+  // =========================================
+  // Form state
+  // =========================================
   const [formData, setFormData] = useState({
     className: "",
     section: "",
     academicYear: "",
   });
 
+  // =========================================
+  // Main data states
+  // =========================================
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(true);
@@ -16,17 +22,42 @@ const ClassesManagement = () => {
   const [editingClassId, setEditingClassId] = useState(null);
   const [showClassModal, setShowClassModal] = useState(false);
 
+  // =========================================
+  // Filter states
+  // =========================================
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const [classNameSortOrder, setClassNameSortOrder] = useState("default");
-  const [sectionSortOrder, setSectionSortOrder] = useState("default");
-  const [academicYearSortOrder, setAcademicYearSortOrder] = useState("default");
+  // =========================================
+  // Sort states
+  // =========================================
+  const [classNameSortOrder, setClassNameSortOrder] = useState("");
+  const [sectionSortOrder, setSectionSortOrder] = useState("");
+  const [academicYearSortOrder, setAcademicYearSortOrder] = useState("");
 
+  // =========================================
+  // Pagination states
+  // =========================================
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  // =========================================
+  // Initial load
+  // =========================================
   useEffect(() => {
     fetchClasses();
   }, []);
 
+  // =========================================
+  // Reset page when filters or sorting change
+  // =========================================
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, classNameSortOrder, sectionSortOrder, academicYearSortOrder]);
+
+  // =========================================
+  // Get auth headers for protected API calls
+  // =========================================
   const getAuthHeaders = () => {
     const token = localStorage.getItem("token");
     return {
@@ -34,6 +65,9 @@ const ClassesManagement = () => {
     };
   };
 
+  // =========================================
+  // Fetch classes from backend
+  // =========================================
   const fetchClasses = async () => {
     try {
       setTableLoading(true);
@@ -53,26 +87,75 @@ const ClassesManagement = () => {
     }
   };
 
+  // =========================================
+  // Reset all sorting states
+  // =========================================
   const resetAllSorts = () => {
-    setClassNameSortOrder("default");
-    setSectionSortOrder("default");
-    setAcademicYearSortOrder("default");
+    setClassNameSortOrder("");
+    setSectionSortOrder("");
+    setAcademicYearSortOrder("");
   };
 
-  const setOnlyActiveSort = (sortType, value) => {
-    resetAllSorts();
+  // =========================================
+  // Toggle sorting per column
+  // =========================================
+  const toggleSort = (sortType) => {
+    if (sortType === "className") {
+      const next =
+        classNameSortOrder === ""
+          ? "asc"
+          : classNameSortOrder === "asc"
+          ? "desc"
+          : "";
+      resetAllSorts();
+      setClassNameSortOrder(next);
+    }
 
-    if (sortType === "className") setClassNameSortOrder(value);
-    if (sortType === "section") setSectionSortOrder(value);
-    if (sortType === "academicYear") setAcademicYearSortOrder(value);
+    if (sortType === "section") {
+      const next =
+        sectionSortOrder === ""
+          ? "asc"
+          : sectionSortOrder === "asc"
+          ? "desc"
+          : "";
+      resetAllSorts();
+      setSectionSortOrder(next);
+    }
+
+    if (sortType === "academicYear") {
+      const next =
+        academicYearSortOrder === ""
+          ? "asc"
+          : academicYearSortOrder === "asc"
+          ? "desc"
+          : "";
+      resetAllSorts();
+      setAcademicYearSortOrder(next);
+    }
   };
 
+  // =========================================
+  // Show sorting arrows
+  // =========================================
+  const getSortIndicator = (sortValue) => {
+    if (sortValue === "asc") return " ↑";
+    if (sortValue === "desc") return " ↓";
+    return "";
+  };
+
+  // =========================================
+  // Clear filters and reset page
+  // =========================================
   const handleClearFilters = () => {
     setSearchTerm("");
     setStatusFilter("all");
     resetAllSorts();
+    setCurrentPage(1);
   };
 
+  // =========================================
+  // Handle form input changes
+  // =========================================
   const handleChange = (e) => {
     setFormData((prev) => ({
       ...prev,
@@ -80,6 +163,9 @@ const ClassesManagement = () => {
     }));
   };
 
+  // =========================================
+  // Reset form state
+  // =========================================
   const resetForm = () => {
     setFormData({
       className: "",
@@ -91,6 +177,9 @@ const ClassesManagement = () => {
     setError("");
   };
 
+  // =========================================
+  // Open and close modal
+  // =========================================
   const openCreateModal = () => {
     resetForm();
     setShowClassModal(true);
@@ -101,6 +190,9 @@ const ClassesManagement = () => {
     setShowClassModal(false);
   };
 
+  // =========================================
+  // Open edit modal and prefill form
+  // =========================================
   const handleEdit = (cls) => {
     setMessage("");
     setError("");
@@ -113,6 +205,9 @@ const ClassesManagement = () => {
     setShowClassModal(true);
   };
 
+  // =========================================
+  // Create or update class
+  // =========================================
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -165,7 +260,18 @@ const ClassesManagement = () => {
     }
   };
 
+  // =========================================
+  // Activate / Deactivate class with confirm popup
+  // =========================================
   const handleClassStatusChange = async (classId, newStatus) => {
+    const actionText = newStatus === 1 ? "activate" : "deactivate";
+
+    const confirmAction = window.confirm(
+      `Are you sure you want to ${actionText} this class?`
+    );
+
+    if (!confirmAction) return;
+
     try {
       setMessage("");
       setError("");
@@ -179,6 +285,10 @@ const ClassesManagement = () => {
       );
 
       if (response.data.success) {
+        setMessage(
+          response.data.message ||
+            `Class ${newStatus === 1 ? "activated" : "deactivated"} successfully`
+        );
         fetchClasses();
       }
     } catch (err) {
@@ -186,6 +296,9 @@ const ClassesManagement = () => {
     }
   };
 
+  // =========================================
+  // Delete class with confirm popup
+  // =========================================
   const handleDeleteClass = async (classId) => {
     const confirmed = window.confirm(
       "Are you sure you want to delete this class?"
@@ -213,6 +326,9 @@ const ClassesManagement = () => {
     }
   };
 
+  // =========================================
+  // Helpers for custom sorting
+  // =========================================
   const getClassNameSortValue = (cls) => {
     const raw = String(cls.ClassName || "").trim();
     const num = Number(raw);
@@ -231,6 +347,9 @@ const ClassesManagement = () => {
     return Number.isNaN(num) ? 0 : num;
   };
 
+  // =========================================
+  // Filter and sort classes
+  // =========================================
   const filteredClasses = useMemo(() => {
     let result = classes.filter((cls) => {
       const matchesSearch =
@@ -284,16 +403,6 @@ const ClassesManagement = () => {
       result = [...result].sort(
         (a, b) => getAcademicYearSortValue(b) - getAcademicYearSortValue(a)
       );
-    } else {
-      result = [...result].sort((a, b) => {
-        const av = getClassNameSortValue(a);
-        const bv = getClassNameSortValue(b);
-
-        if (av.isNumeric && bv.isNumeric) return av.value - bv.value;
-        if (av.isNumeric && !bv.isNumeric) return -1;
-        if (!av.isNumeric && bv.isNumeric) return 1;
-        return String(av.value).localeCompare(String(bv.value));
-      });
     }
 
     return result;
@@ -306,6 +415,9 @@ const ClassesManagement = () => {
     academicYearSortOrder,
   ]);
 
+  // =========================================
+  // Summary counts
+  // =========================================
   const activeClassesCount = useMemo(() => {
     return classes.filter((cls) => cls.IsActive === 1 || cls.IsActive === true)
       .length;
@@ -313,9 +425,78 @@ const ClassesManagement = () => {
 
   const inactiveClassesCount = classes.length - activeClassesCount;
 
+  // =========================================
+  // Pagination calculations
+  // =========================================
+  const totalPages = Math.ceil(filteredClasses.length / ITEMS_PER_PAGE);
+
+  const paginatedClasses = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredClasses.slice(startIndex, endIndex);
+  }, [filteredClasses, currentPage]);
+
+  // =========================================
+  // Pagination actions
+  // =========================================
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
+
+  const goToPage = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // =========================================
+  // Build visible page numbers like:
+  // << < 1 2 3 ... 10 > >>
+  // =========================================
+  const getVisiblePages = () => {
+    const pages = [];
+
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+      return pages;
+    }
+
+    pages.push(1);
+
+    if (currentPage > 3) {
+      pages.push("...");
+    }
+
+    const startPage = Math.max(2, currentPage - 1);
+    const endPage = Math.min(totalPages - 1, currentPage + 1);
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    if (currentPage < totalPages - 2) {
+      pages.push("...");
+    }
+
+    pages.push(totalPages);
+
+    return pages;
+  };
+
   return (
     <>
       <div className="space-y-5 sm:space-y-6">
+        {/* =========================================
+            Summary cards
+           ========================================= */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
           <div className="rounded-[20px] sm:rounded-[24px] border border-[#d8c3a0] bg-white px-4 sm:px-6 py-4 sm:py-5 shadow-sm">
             <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-[#9b7440]">
@@ -354,12 +535,16 @@ const ClassesManagement = () => {
           </div>
         </div>
 
+        {/* Top error message */}
         {error && !showClassModal && (
           <div className="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
 
+        {/* =========================================
+            Main classes list section
+           ========================================= */}
         <div className="rounded-[22px] sm:rounded-[28px] border border-[#d8c3a0] bg-white shadow-lg overflow-hidden">
           <div className="bg-[#f1e7d7] px-4 sm:px-6 py-4 sm:py-5 border-b border-[#dcc7a6] space-y-4">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -415,147 +600,190 @@ const ClassesManagement = () => {
               <div className="p-8 text-center text-gray-600">
                 Loading classes...
               </div>
-            ) : filteredClasses.length === 0 ? (
+            ) : paginatedClasses.length === 0 ? (
               <div className="p-8 text-center text-gray-600">
                 No classes found
               </div>
             ) : (
-              <table className="min-w-[980px] w-full">
-                <thead className="bg-[#fbf7f0]">
-                  <tr>
-                    <th className="text-left px-4 sm:px-6 py-4 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Class Name</span>
-                        <select
-                          value={classNameSortOrder}
-                          onChange={(e) =>
-                            setOnlyActiveSort("className", e.target.value)
-                          }
-                          className="w-[92px] rounded-lg border border-[#d8c3a0] bg-white px-2 py-1 text-xs font-medium text-black outline-none"
-                        >
-                          <option value="default">Default</option>
-                          <option value="asc">Low-High</option>
-                          <option value="desc">High-Low</option>
-                        </select>
-                      </div>
-                    </th>
+              <>
+                <table className="min-w-[980px] w-full">
+                  <thead className="bg-[#fbf7f0]">
+                    <tr>
+                      <th
+                        onClick={() => toggleSort("className")}
+                        className="cursor-pointer text-left px-4 sm:px-6 py-4 text-sm font-bold text-black select-none"
+                      >
+                        Class Name{getSortIndicator(classNameSortOrder)}
+                      </th>
 
-                    <th className="text-left px-4 sm:px-6 py-4 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Section</span>
-                        <select
-                          value={sectionSortOrder}
-                          onChange={(e) =>
-                            setOnlyActiveSort("section", e.target.value)
-                          }
-                          className="w-[78px] rounded-lg border border-[#d8c3a0] bg-white px-2 py-1 text-xs font-medium text-black outline-none"
-                        >
-                          <option value="default">Default</option>
-                          <option value="asc">A-Z</option>
-                          <option value="desc">Z-A</option>
-                        </select>
-                      </div>
-                    </th>
+                      <th
+                        onClick={() => toggleSort("section")}
+                        className="cursor-pointer text-left px-4 sm:px-6 py-4 text-sm font-bold text-black select-none"
+                      >
+                        Section{getSortIndicator(sectionSortOrder)}
+                      </th>
 
-                    <th className="text-left px-4 sm:px-6 py-4 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Academic Year</span>
-                        <select
-                          value={academicYearSortOrder}
-                          onChange={(e) =>
-                            setOnlyActiveSort("academicYear", e.target.value)
-                          }
-                          className="w-[92px] rounded-lg border border-[#d8c3a0] bg-white px-2 py-1 text-xs font-medium text-black outline-none"
-                        >
-                          <option value="default">Default</option>
-                          <option value="asc">Old-New</option>
-                          <option value="desc">New-Old</option>
-                        </select>
-                      </div>
-                    </th>
+                      <th
+                        onClick={() => toggleSort("academicYear")}
+                        className="cursor-pointer text-left px-4 sm:px-6 py-4 text-sm font-bold text-black select-none"
+                      >
+                        Academic Year{getSortIndicator(academicYearSortOrder)}
+                      </th>
 
-                    <th className="text-left px-4 sm:px-6 py-4 text-sm font-bold text-black">
-                      Status
-                    </th>
+                      <th className="text-left px-4 sm:px-6 py-4 text-sm font-bold text-black">
+                        Status
+                      </th>
 
-                    <th className="text-left px-4 sm:px-6 py-4 text-sm font-bold text-black">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
+                      <th className="text-left px-4 sm:px-6 py-4 text-sm font-bold text-black">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
 
-                <tbody>
-                  {filteredClasses.map((cls) => (
-                    <tr
-                      key={cls.ClassId}
-                      className="border-t border-[#eee2cf] hover:bg-[#fcfaf6]"
-                    >
-                      <td className="px-4 sm:px-6 py-4 sm:py-6 text-black font-medium whitespace-nowrap">
-                        {cls.ClassName}
-                      </td>
+                  <tbody>
+                    {paginatedClasses.map((cls) => (
+                      <tr
+                        key={cls.ClassId}
+                        className="border-t border-[#eee2cf] hover:bg-[#fcfaf6]"
+                      >
+                        <td className="px-4 sm:px-6 py-4 sm:py-6 text-black font-medium whitespace-nowrap">
+                          {cls.ClassName}
+                        </td>
 
-                      <td className="px-4 sm:px-6 py-4 sm:py-6 text-gray-700 whitespace-nowrap">
-                        {cls.Section}
-                      </td>
+                        <td className="px-4 sm:px-6 py-4 sm:py-6 text-gray-700 whitespace-nowrap">
+                          {cls.Section}
+                        </td>
 
-                      <td className="px-4 sm:px-6 py-4 sm:py-6 text-gray-700 whitespace-nowrap">
-                        {cls.AcademicYear}
-                      </td>
+                        <td className="px-4 sm:px-6 py-4 sm:py-6 text-gray-700 whitespace-nowrap">
+                          {cls.AcademicYear}
+                        </td>
 
-                      <td className="px-4 sm:px-6 py-4 sm:py-6">
-                        <span
-                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${
-                            cls.IsActive
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {cls.IsActive ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-
-                      <td className="px-4 sm:px-6 py-4 sm:py-6">
-                        <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-                          <button
-                            onClick={() => handleEdit(cls)}
-                            className="rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 px-4 py-2 text-sm font-semibold whitespace-nowrap"
-                          >
-                            Edit
-                          </button>
-
-                          <button
-                            onClick={() =>
-                              handleClassStatusChange(
-                                cls.ClassId,
-                                cls.IsActive ? 0 : 1
-                              )
-                            }
-                            className={`rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap ${
+                        <td className="px-4 sm:px-6 py-4 sm:py-6">
+                          <span
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${
                               cls.IsActive
-                                ? "bg-red-100 text-red-700 hover:bg-red-200"
-                                : "bg-green-100 text-green-700 hover:bg-green-200"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
                             }`}
                           >
-                            {cls.IsActive ? "Deactivate" : "Activate"}
-                          </button>
+                            {cls.IsActive ? "Active" : "Inactive"}
+                          </span>
+                        </td>
 
-                          <button
-                            onClick={() => handleDeleteClass(cls.ClassId)}
-                            className="rounded-xl bg-gray-900 text-white hover:bg-black px-4 py-2 text-sm font-semibold whitespace-nowrap"
+                        <td className="px-4 sm:px-6 py-4 sm:py-6">
+                          <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+                            <button
+                              onClick={() => handleEdit(cls)}
+                              className="rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 px-4 py-2 text-sm font-semibold whitespace-nowrap"
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                handleClassStatusChange(
+                                  cls.ClassId,
+                                  cls.IsActive ? 0 : 1
+                                )
+                              }
+                              className={`rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap ${
+                                cls.IsActive
+                                  ? "bg-red-100 text-red-700 hover:bg-red-200"
+                                  : "bg-green-100 text-green-700 hover:bg-green-200"
+                              }`}
+                            >
+                              {cls.IsActive ? "Deactivate" : "Activate"}
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteClass(cls.ClassId)}
+                              className="rounded-xl bg-gray-900 text-white hover:bg-black px-4 py-2 text-sm font-semibold whitespace-nowrap"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Pagination inside same section */}
+                {filteredClasses.length > 0 && totalPages > 1 && (
+                  <div className="mt-6 flex flex-col items-center gap-4 border-t border-[#eadcc8] bg-white px-4 py-6">
+                    <p className="text-sm text-[#6b7280] text-center">
+                      Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                      {Math.min(currentPage * ITEMS_PER_PAGE, filteredClasses.length)} of{" "}
+                      {filteredClasses.length} classes
+                    </p>
+
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <button
+                        onClick={() => goToPage(1)}
+                        disabled={currentPage === 1}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ≪
+                      </button>
+
+                      <button
+                        onClick={goToPreviousPage}
+                        disabled={currentPage === 1}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ‹
+                      </button>
+
+                      {getVisiblePages().map((page, index) =>
+                        page === "..." ? (
+                          <span
+                            key={`ellipsis-${index}`}
+                            className="flex h-12 min-w-[48px] items-center justify-center rounded-2xl px-3 text-lg font-semibold text-[#6b7280]"
                           >
-                            Delete
+                            ...
+                          </span>
+                        ) : (
+                          <button
+                            key={page}
+                            onClick={() => goToPage(page)}
+                            className={`h-12 min-w-[48px] rounded-2xl px-4 text-lg font-semibold transition ${
+                              currentPage === page
+                                ? "bg-blue-500 text-white shadow-md"
+                                : "border border-[#d6c2a8] bg-white text-[#1a1a1a] hover:bg-[#efe4d2]"
+                            }`}
+                          >
+                            {page}
                           </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        )
+                      )}
+
+                      <button
+                        onClick={goToNextPage}
+                        disabled={currentPage === totalPages}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ›
+                      </button>
+
+                      <button
+                        onClick={() => goToPage(totalPages)}
+                        disabled={currentPage === totalPages}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ≫
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
       </div>
 
+      {/* =========================================
+          Create / Edit class modal
+         ========================================= */}
       {showClassModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-3 sm:px-4 py-4">
           <div className="relative w-full max-w-[680px] max-h-[90vh] overflow-y-auto rounded-[24px] sm:rounded-[30px] border border-[#d8c3a0] bg-white shadow-2xl">

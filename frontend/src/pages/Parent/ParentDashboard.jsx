@@ -70,9 +70,8 @@ const ParentDashboard = () => {
         setSelectedStudentId(String(storedStudentId));
       } else {
         const firstStudent = dashboardData.students[0];
-        const classText = `${firstStudent.class?.className || ""}${
-          firstStudent.class?.section ? `-${firstStudent.class.section}` : ""
-        }`;
+        const classText = `${firstStudent.class?.className || ""}${firstStudent.class?.section ? `-${firstStudent.class.section}` : ""
+          }`;
 
         setSelectedStudentId(String(firstStudent.studentId));
         localStorage.setItem("selectedStudentId", String(firstStudent.studentId));
@@ -183,9 +182,8 @@ const ParentDashboard = () => {
   const studentName = selectedStudent?.studentName || "N/A";
 
   const studentClass = selectedStudent
-    ? `${selectedStudent.class?.className || ""}${
-        selectedStudent.class?.section ? `-${selectedStudent.class.section}` : ""
-      }`
+    ? `${selectedStudent.class?.className || ""}${selectedStudent.class?.section ? `-${selectedStudent.class.section}` : ""
+    }`
     : "N/A";
 
   const academicYear = selectedStudent?.class?.academicYear || "N/A";
@@ -203,9 +201,8 @@ const ParentDashboard = () => {
     );
 
     if (selected) {
-      const classText = `${selected.class?.className || ""}${
-        selected.class?.section ? `-${selected.class.section}` : ""
-      }`;
+      const classText = `${selected.class?.className || ""}${selected.class?.section ? `-${selected.class.section}` : ""
+        }`;
 
       localStorage.setItem("selectedStudentId", String(selected.studentId));
       localStorage.setItem("selectedStudentName", selected.studentName || "");
@@ -223,40 +220,48 @@ const ParentDashboard = () => {
     }
   };
 
-  const handleTeacherSort = (value) => {
-    setTeacherSort(value);
-    if (value) {
+  const toggleSort = (column) => {
+    if (column === "teacher") {
+      const nextSort =
+        teacherSort === "" ? "asc" : teacherSort === "asc" ? "desc" : "";
+      setTeacherSort(nextSort);
       setSubjectSort("");
       setRatingSort("");
       setSubmittedSort("");
     }
-  };
 
-  const handleSubjectSort = (value) => {
-    setSubjectSort(value);
-    if (value) {
+    if (column === "subject") {
+      const nextSort =
+        subjectSort === "" ? "asc" : subjectSort === "asc" ? "desc" : "";
+      setSubjectSort(nextSort);
       setTeacherSort("");
       setRatingSort("");
       setSubmittedSort("");
     }
-  };
 
-  const handleRatingSort = (value) => {
-    setRatingSort(value);
-    if (value) {
+    if (column === "rating") {
+      const nextSort =
+        ratingSort === "" ? "asc" : ratingSort === "asc" ? "desc" : "";
+      setRatingSort(nextSort);
       setTeacherSort("");
       setSubjectSort("");
       setSubmittedSort("");
     }
-  };
 
-  const handleSubmittedSort = (value) => {
-    setSubmittedSort(value);
-    if (value) {
+    if (column === "submitted") {
+      const nextSort =
+        submittedSort === "" ? "asc" : submittedSort === "asc" ? "desc" : "";
+      setSubmittedSort(nextSort);
       setTeacherSort("");
       setSubjectSort("");
       setRatingSort("");
     }
+  };
+
+  const getSortIndicator = (sortValue) => {
+    if (sortValue === "asc") return " ↑";
+    if (sortValue === "desc") return " ↓";
+    return "";
   };
 
   const clearSorting = () => {
@@ -267,7 +272,19 @@ const ParentDashboard = () => {
   };
 
   const sortedRecentFeedback = useMemo(() => {
-    const data = [...recentFeedback];
+    const now = new Date();
+    const twoDaysAgo = new Date();
+    twoDaysAgo.setDate(now.getDate() - 2);
+    twoDaysAgo.setHours(0, 0, 0, 0);
+
+    const data = recentFeedback.filter((item) => {
+      if (!item.date) return false;
+
+      const feedbackDate = new Date(item.date);
+      if (Number.isNaN(feedbackDate.getTime())) return false;
+
+      return feedbackDate >= twoDaysAgo;
+    });
 
     if (teacherSort) {
       data.sort((a, b) => {
@@ -326,13 +343,19 @@ const ParentDashboard = () => {
                   <option key={student.studentId} value={student.studentId}>
                     {student.studentName}
                     {student.class?.className
-                      ? ` - ${student.class.className}${
-                          student.class?.section ? `-${student.class.section}` : ""
-                        }`
+                      ? ` - ${student.class.className}${student.class?.section ? `-${student.class.section}` : ""
+                      }`
                       : ""}
                   </option>
                 ))}
               </select>
+
+              <button
+                onClick={() => navigate(`/parent/profile/${parentId}`)}
+                className="rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
+              >
+                Profile
+              </button>
 
               <button
                 onClick={() => navigate(`/submit-feedback/${parentId}`)}
@@ -461,7 +484,7 @@ const ParentDashboard = () => {
                       Recent Feedback
                     </h3>
                     <p className="mt-1 text-sm text-[#6b7280]">
-                      Latest feedback activity for the selected child
+                      Last two days feedback activity for the selected child
                     </p>
                   </div>
 
@@ -487,64 +510,32 @@ const ParentDashboard = () => {
                     <table className="min-w-full border-separate border-spacing-y-3">
                       <thead>
                         <tr>
-                          <th className="px-4 py-2 text-left text-sm font-semibold text-[#6b7280]">
-                            <div className="flex items-center gap-2">
-                              <span>Teacher</span>
-                              <select
-                                value={teacherSort}
-                                onChange={(e) => handleTeacherSort(e.target.value)}
-                                className="rounded-lg border border-[#d6c2a8] bg-[#f7f1e8] px-2 py-1 text-xs text-[#1a1a1a] outline-none"
-                              >
-                                <option value="">Default</option>
-                                <option value="asc">A-Z</option>
-                                <option value="desc">Z-A</option>
-                              </select>
-                            </div>
+                          <th
+                            onClick={() => toggleSort("teacher")}
+                            className="cursor-pointer px-4 py-2 text-left text-sm font-semibold text-[#6b7280] select-none"
+                          >
+                            Teacher{getSortIndicator(teacherSort)}
                           </th>
 
-                          <th className="px-4 py-2 text-left text-sm font-semibold text-[#6b7280]">
-                            <div className="flex items-center gap-2">
-                              <span>Subject</span>
-                              <select
-                                value={subjectSort}
-                                onChange={(e) => handleSubjectSort(e.target.value)}
-                                className="rounded-lg border border-[#d6c2a8] bg-[#f7f1e8] px-2 py-1 text-xs text-[#1a1a1a] outline-none"
-                              >
-                                <option value="">Default</option>
-                                <option value="asc">A-Z</option>
-                                <option value="desc">Z-A</option>
-                              </select>
-                            </div>
+                          <th
+                            onClick={() => toggleSort("subject")}
+                            className="cursor-pointer px-4 py-2 text-left text-sm font-semibold text-[#6b7280] select-none"
+                          >
+                            Subject{getSortIndicator(subjectSort)}
                           </th>
 
-                          <th className="px-4 py-2 text-left text-sm font-semibold text-[#6b7280]">
-                            <div className="flex items-center gap-2">
-                              <span>Rating</span>
-                              <select
-                                value={ratingSort}
-                                onChange={(e) => handleRatingSort(e.target.value)}
-                                className="rounded-lg border border-[#d6c2a8] bg-[#f7f1e8] px-2 py-1 text-xs text-[#1a1a1a] outline-none"
-                              >
-                                <option value="">Default</option>
-                                <option value="asc">Low-High</option>
-                                <option value="desc">High-Low</option>
-                              </select>
-                            </div>
+                          <th
+                            onClick={() => toggleSort("rating")}
+                            className="cursor-pointer px-4 py-2 text-left text-sm font-semibold text-[#6b7280] select-none"
+                          >
+                            Rating{getSortIndicator(ratingSort)}
                           </th>
 
-                          <th className="px-4 py-2 text-left text-sm font-semibold text-[#6b7280]">
-                            <div className="flex items-center gap-2">
-                              <span>Submitted On</span>
-                              <select
-                                value={submittedSort}
-                                onChange={(e) => handleSubmittedSort(e.target.value)}
-                                className="rounded-lg border border-[#d6c2a8] bg-[#f7f1e8] px-2 py-1 text-xs text-[#1a1a1a] outline-none"
-                              >
-                                <option value="">Default</option>
-                                <option value="asc">Oldest</option>
-                                <option value="desc">Newest</option>
-                              </select>
-                            </div>
+                          <th
+                            onClick={() => toggleSort("submitted")}
+                            className="cursor-pointer px-4 py-2 text-left text-sm font-semibold text-[#6b7280] select-none"
+                          >
+                            Submitted On{getSortIndicator(submittedSort)}
                           </th>
 
                           <th className="px-4 py-2 text-left text-sm font-semibold text-[#6b7280]">
@@ -593,11 +584,10 @@ const ParentDashboard = () => {
                                 </td>
                                 <td className="rounded-r-xl px-4 py-4">
                                   <span
-                                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                      item.status === "Responded"
+                                    className={`rounded-full px-3 py-1 text-xs font-semibold ${item.status === "Responded"
                                         ? "bg-green-100 text-green-700"
                                         : "bg-yellow-100 text-yellow-700"
-                                    }`}
+                                      }`}
                                   >
                                     {item.status || "Pending"}
                                   </span>
@@ -641,11 +631,10 @@ const ParentDashboard = () => {
                             </div>
 
                             <span
-                              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                item.status === "Responded"
+                              className={`rounded-full px-3 py-1 text-xs font-semibold ${item.status === "Responded"
                                   ? "bg-green-100 text-green-700"
                                   : "bg-yellow-100 text-yellow-700"
-                              }`}
+                                }`}
                             >
                               {item.status || "Pending"}
                             </span>

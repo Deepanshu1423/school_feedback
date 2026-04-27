@@ -116,6 +116,99 @@ const getParentDashboard = (req, res) => {
   });
 };
 
+const getParentProfile = (req, res) => {
+  const { parentId } = req.params;
+
+  if (!parentId) {
+    return res.status(400).json({
+      success: false,
+      message: "ParentId is required",
+    });
+  }
+
+  parentModel.getParentProfile(parentId, (err, results) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch parent profile",
+        error: err.message,
+      });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Parent profile not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Parent profile fetched successfully",
+      data: results[0],
+    });
+  });
+};
+
+const updateParentProfile = async (req, res) => {
+  try {
+    const { parentId } = req.params;
+    const { fullName, alternateMobile, address } = req.body;
+
+    if (!parentId) {
+      return res.status(400).json({
+        success: false,
+        message: "ParentId is required",
+      });
+    }
+
+    if (!fullName) {
+      return res.status(400).json({
+        success: false,
+        message: "Full name is required",
+      });
+    }
+
+    if (alternateMobile && !/^\d{10}$/.test(alternateMobile)) {
+      return res.status(400).json({
+        success: false,
+        message: "Alternate mobile number must be exactly 10 digits",
+      });
+    }
+
+    await parentModel.updateParentProfile(parentId, {
+      fullName,
+      alternateMobile: alternateMobile || null,
+      address: address || "",
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+    });
+  } catch (error) {
+    if (error.code === "ER_DUP_ENTRY") {
+      return res.status(409).json({
+        success: false,
+        message: "Alternate mobile number already exists",
+      });
+    }
+
+    if (error.message === "Mobile and alternate mobile cannot be same") {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update parent profile",
+    });
+  }
+};
+
+
 const getParentFeedbackHistory = (req, res) => {
   const parentId = req.params.parentId;
 
@@ -328,4 +421,6 @@ module.exports = {
   getParentFeedbackHistory,
   getParentDropdownData,
   getParentStudentDashboard,
+  getParentProfile,
+  updateParentProfile,
 };

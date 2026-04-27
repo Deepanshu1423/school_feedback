@@ -2,10 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "../../api/axios";
 
 const SubjectsManagement = () => {
+  // =========================================
+  // Form state
+  // =========================================
   const [formData, setFormData] = useState({
     subjectName: "",
   });
 
+  // =========================================
+  // Main data states
+  // =========================================
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(true);
@@ -14,15 +20,37 @@ const SubjectsManagement = () => {
   const [editingSubjectId, setEditingSubjectId] = useState(null);
   const [showSubjectModal, setShowSubjectModal] = useState(false);
 
+  // =========================================
+  // Filter and sort states
+  // =========================================
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [subjectNameSortOrder, setSubjectNameSortOrder] = useState("default");
-  const [dateSortOrder, setDateSortOrder] = useState("default");
+  const [subjectNameSortOrder, setSubjectNameSortOrder] = useState("");
+  const [dateSortOrder, setDateSortOrder] = useState("");
 
+  // =========================================
+  // Pagination states
+  // =========================================
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  // =========================================
+  // Initial load
+  // =========================================
   useEffect(() => {
     fetchSubjects();
   }, []);
 
+  // =========================================
+  // Reset page when filters or sorting change
+  // =========================================
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, subjectNameSortOrder, dateSortOrder]);
+
+  // =========================================
+  // Get auth headers for protected API calls
+  // =========================================
   const getAuthHeaders = () => {
     const token = localStorage.getItem("token");
     return {
@@ -30,6 +58,9 @@ const SubjectsManagement = () => {
     };
   };
 
+  // =========================================
+  // Fetch subjects from backend
+  // =========================================
   const fetchSubjects = async () => {
     try {
       setTableLoading(true);
@@ -49,30 +80,80 @@ const SubjectsManagement = () => {
     }
   };
 
+  // =========================================
+  // Reset all sorting states
+  // =========================================
   const resetAllSorts = () => {
-    setSubjectNameSortOrder("default");
-    setDateSortOrder("default");
+    setSubjectNameSortOrder("");
+    setDateSortOrder("");
   };
 
-  const setOnlyActiveSort = (sortType, value) => {
-    resetAllSorts();
+  // =========================================
+  // Toggle sorting per column
+  // =========================================
+  const toggleSort = (sortType) => {
+    if (sortType === "subjectName") {
+      const next =
+        subjectNameSortOrder === ""
+          ? "asc"
+          : subjectNameSortOrder === "asc"
+          ? "desc"
+          : "";
 
-    if (sortType === "subjectName") setSubjectNameSortOrder(value);
-    if (sortType === "date") setDateSortOrder(value);
+      resetAllSorts();
+      setSubjectNameSortOrder(next);
+    }
+
+    if (sortType === "date") {
+      const next =
+        dateSortOrder === ""
+          ? "latest"
+          : dateSortOrder === "latest"
+          ? "oldest"
+          : "";
+
+      resetAllSorts();
+      setDateSortOrder(next);
+    }
   };
 
+  // =========================================
+  // Show sorting arrows
+  // =========================================
+  const getSortIndicator = (sortValue, type = "default") => {
+    if (type === "date") {
+      if (sortValue === "latest") return " ↓";
+      if (sortValue === "oldest") return " ↑";
+      return "";
+    }
+
+    if (sortValue === "asc") return " ↑";
+    if (sortValue === "desc") return " ↓";
+    return "";
+  };
+
+  // =========================================
+  // Clear filters and reset page
+  // =========================================
   const handleClearFilters = () => {
     setSearchTerm("");
     setStatusFilter("all");
     resetAllSorts();
+    setCurrentPage(1);
   };
 
+  // =========================================
+  // Handle form input changes
+  // =========================================
   const handleChange = (e) => {
     setFormData({
       subjectName: e.target.value,
     });
   };
 
+  // =========================================
+  // Reset form state
+  // =========================================
   const resetForm = () => {
     setFormData({
       subjectName: "",
@@ -82,6 +163,9 @@ const SubjectsManagement = () => {
     setError("");
   };
 
+  // =========================================
+  // Open and close modal
+  // =========================================
   const openCreateModal = () => {
     resetForm();
     setShowSubjectModal(true);
@@ -92,6 +176,9 @@ const SubjectsManagement = () => {
     setShowSubjectModal(false);
   };
 
+  // =========================================
+  // Open edit modal and prefill form
+  // =========================================
   const handleEdit = (subject) => {
     setMessage("");
     setError("");
@@ -102,6 +189,9 @@ const SubjectsManagement = () => {
     setShowSubjectModal(true);
   };
 
+  // =========================================
+  // Create or update subject
+  // =========================================
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -148,14 +238,27 @@ const SubjectsManagement = () => {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          (editingSubjectId ? "Failed to update subject" : "Failed to create subject")
+          (editingSubjectId
+            ? "Failed to update subject"
+            : "Failed to create subject")
       );
     } finally {
       setLoading(false);
     }
   };
 
+  // =========================================
+  // Activate / Deactivate subject with confirm popup
+  // =========================================
   const handleSubjectStatusChange = async (subjectId, newStatus) => {
+    const actionText = newStatus === 1 ? "activate" : "deactivate";
+
+    const confirmAction = window.confirm(
+      `Are you sure you want to ${actionText} this subject?`
+    );
+
+    if (!confirmAction) return;
+
     try {
       setMessage("");
       setError("");
@@ -169,6 +272,10 @@ const SubjectsManagement = () => {
       );
 
       if (response.data.success) {
+        setMessage(
+          response.data.message ||
+            `Subject ${newStatus === 1 ? "activated" : "deactivated"} successfully`
+        );
         fetchSubjects();
       }
     } catch (err) {
@@ -176,6 +283,9 @@ const SubjectsManagement = () => {
     }
   };
 
+  // =========================================
+  // Delete subject with confirm popup
+  // =========================================
   const handleDeleteSubject = async (subjectId) => {
     const confirmDelete = window.confirm(
       "Are you sure you want to delete this subject?"
@@ -193,9 +303,11 @@ const SubjectsManagement = () => {
 
       if (response.data.success) {
         setMessage(response.data.message || "Subject deleted successfully");
+
         if (editingSubjectId === subjectId) {
           resetForm();
         }
+
         fetchSubjects();
       }
     } catch (err) {
@@ -203,8 +315,12 @@ const SubjectsManagement = () => {
     }
   };
 
+  // =========================================
+  // Format created date
+  // =========================================
   const formatDate = (dateValue) => {
     if (!dateValue) return "-";
+
     const date = new Date(dateValue);
 
     return date.toLocaleDateString("en-GB", {
@@ -214,8 +330,12 @@ const SubjectsManagement = () => {
     });
   };
 
+  // =========================================
+  // Format created time
+  // =========================================
   const formatTime = (dateValue) => {
     if (!dateValue) return "-";
+
     const date = new Date(dateValue);
 
     return date
@@ -227,6 +347,9 @@ const SubjectsManagement = () => {
       .toLowerCase();
   };
 
+  // =========================================
+  // Show Today / Yesterday chip
+  // =========================================
   const getDayLabel = (dateValue) => {
     if (!dateValue) return "";
 
@@ -243,9 +366,13 @@ const SubjectsManagement = () => {
 
     if (compareDate.getTime() === today.getTime()) return "Today";
     if (compareDate.getTime() === yesterday.getTime()) return "Yesterday";
+
     return "";
   };
 
+  // =========================================
+  // Filter and sort subjects
+  // =========================================
   const filteredSubjects = useMemo(() => {
     let result = subjects.filter((subject) => {
       const matchesSearch = subject.SubjectName?.toLowerCase().includes(
@@ -283,6 +410,9 @@ const SubjectsManagement = () => {
     return result;
   }, [subjects, searchTerm, statusFilter, subjectNameSortOrder, dateSortOrder]);
 
+  // =========================================
+  // Summary counts
+  // =========================================
   const activeSubjectsCount = useMemo(() => {
     return subjects.filter(
       (subject) => subject.IsActive === 1 || subject.IsActive === true
@@ -291,9 +421,78 @@ const SubjectsManagement = () => {
 
   const inactiveSubjectsCount = subjects.length - activeSubjectsCount;
 
+  // =========================================
+  // Pagination calculations
+  // =========================================
+  const totalPages = Math.ceil(filteredSubjects.length / ITEMS_PER_PAGE);
+
+  const paginatedSubjects = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredSubjects.slice(startIndex, endIndex);
+  }, [filteredSubjects, currentPage]);
+
+  // =========================================
+  // Pagination actions
+  // =========================================
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
+
+  const goToPage = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // =========================================
+  // Build visible page numbers like:
+  // << < 1 2 3 ... 10 > >>
+  // =========================================
+  const getVisiblePages = () => {
+    const pages = [];
+
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+      return pages;
+    }
+
+    pages.push(1);
+
+    if (currentPage > 3) {
+      pages.push("...");
+    }
+
+    const startPage = Math.max(2, currentPage - 1);
+    const endPage = Math.min(totalPages - 1, currentPage + 1);
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    if (currentPage < totalPages - 2) {
+      pages.push("...");
+    }
+
+    pages.push(totalPages);
+
+    return pages;
+  };
+
   return (
     <>
       <div className="space-y-5 sm:space-y-6">
+        {/* =========================================
+            Summary cards
+           ========================================= */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
           <div className="rounded-[20px] sm:rounded-[24px] border border-[#d8c3a0] bg-white px-4 sm:px-6 py-4 sm:py-5 shadow-sm">
             <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-[#9b7440]">
@@ -332,12 +531,16 @@ const SubjectsManagement = () => {
           </div>
         </div>
 
+        {/* Top error message */}
         {error && !showSubjectModal && (
           <div className="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
 
+        {/* =========================================
+            Main subjects list section
+           ========================================= */}
         <div className="rounded-[22px] sm:rounded-[28px] border border-[#d8c3a0] bg-white shadow-lg overflow-hidden">
           <div className="bg-[#f1e7d7] px-4 sm:px-6 py-4 sm:py-5 border-b border-[#dcc7a6] space-y-4">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -393,144 +596,199 @@ const SubjectsManagement = () => {
               <div className="p-8 text-center text-gray-600">
                 Loading subjects...
               </div>
-            ) : filteredSubjects.length === 0 ? (
+            ) : paginatedSubjects.length === 0 ? (
               <div className="p-8 text-center text-gray-600">
                 No subjects found
               </div>
             ) : (
-              <table className="min-w-[980px] w-full">
-                <thead className="bg-[#fbf7f0]">
-                  <tr>
-                    <th className="text-left px-4 sm:px-6 py-4 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Subject Name</span>
-                        <select
-                          value={subjectNameSortOrder}
-                          onChange={(e) =>
-                            setOnlyActiveSort("subjectName", e.target.value)
-                          }
-                          className="w-[78px] rounded-lg border border-[#d8c3a0] bg-white px-2 py-1 text-xs font-medium text-black outline-none"
-                        >
-                          <option value="default">Default</option>
-                          <option value="asc">A-Z</option>
-                          <option value="desc">Z-A</option>
-                        </select>
-                      </div>
-                    </th>
+              <>
+                <table className="min-w-[980px] w-full">
+                  <thead className="bg-[#fbf7f0]">
+                    <tr>
+                      <th
+                        onClick={() => toggleSort("subjectName")}
+                        className="cursor-pointer text-left px-4 sm:px-6 py-4 text-sm font-bold text-black select-none"
+                      >
+                        Subject Name{getSortIndicator(subjectNameSortOrder)}
+                      </th>
 
-                    <th className="text-left px-4 sm:px-6 py-4 text-sm font-bold text-black">
-                      Status
-                    </th>
+                      <th className="text-left px-4 sm:px-6 py-4 text-sm font-bold text-black">
+                        Status
+                      </th>
 
-                    <th className="text-left px-4 sm:px-6 py-4 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Created At</span>
-                        <select
-                          value={dateSortOrder}
-                          onChange={(e) => setOnlyActiveSort("date", e.target.value)}
-                          className="w-[78px] rounded-lg border border-[#d8c3a0] bg-white px-2 py-1 text-xs font-medium text-black outline-none"
-                        >
-                          <option value="default">Default</option>
-                          <option value="latest">Latest</option>
-                          <option value="oldest">Oldest</option>
-                        </select>
-                      </div>
-                    </th>
+                      <th
+                        onClick={() => toggleSort("date")}
+                        className="cursor-pointer text-left px-4 sm:px-6 py-4 text-sm font-bold text-black select-none"
+                      >
+                        Created At{getSortIndicator(dateSortOrder, "date")}
+                      </th>
 
-                    <th className="text-left px-4 sm:px-6 py-4 text-sm font-bold text-black">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
+                      <th className="text-left px-4 sm:px-6 py-4 text-sm font-bold text-black">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
 
-                <tbody>
-                  {filteredSubjects.map((subject) => (
-                    <tr
-                      key={subject.SubjectId}
-                      className="border-t border-[#eee2cf] hover:bg-[#fcfaf6]"
-                    >
-                      <td className="px-4 sm:px-6 py-4 sm:py-6 text-black font-medium whitespace-nowrap">
-                        {subject.SubjectName}
-                      </td>
+                  <tbody>
+                    {paginatedSubjects.map((subject) => (
+                      <tr
+                        key={subject.SubjectId}
+                        className="border-t border-[#eee2cf] hover:bg-[#fcfaf6]"
+                      >
+                        <td className="px-4 sm:px-6 py-4 sm:py-6 text-black font-medium whitespace-nowrap">
+                          {subject.SubjectName}
+                        </td>
 
-                      <td className="px-4 sm:px-6 py-4 sm:py-6">
-                        <span
-                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${
-                            subject.IsActive
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {subject.IsActive ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-
-                      <td className="px-4 sm:px-6 py-4 sm:py-6">
-                        {subject.CreatedAt ? (
-                          <div className="min-w-[180px] sm:min-w-[210px] rounded-2xl border border-[#e3d3bb] bg-white px-3 sm:px-4 py-3 shadow-sm">
-                            <div className="flex items-center gap-2 sm:gap-3 text-black font-semibold text-sm sm:text-[15px]">
-                              <span className="text-base sm:text-lg">📅</span>
-                              <span>{formatDate(subject.CreatedAt)}</span>
-                            </div>
-
-                            <div className="mt-2 flex items-center gap-2 sm:gap-3 text-gray-600 text-xs sm:text-sm flex-wrap">
-                              <span className="text-sm sm:text-base">🕒</span>
-                              <span>{formatTime(subject.CreatedAt)}</span>
-
-                              {getDayLabel(subject.CreatedAt) && (
-                                <span className="rounded-full bg-[#eee4d6] px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-semibold text-[#9b7440]">
-                                  {getDayLabel(subject.CreatedAt)}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-
-                      <td className="px-4 sm:px-6 py-4 sm:py-6">
-                        <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-                          <button
-                            onClick={() => handleEdit(subject)}
-                            className="rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 px-4 py-2 text-sm font-semibold whitespace-nowrap"
-                          >
-                            Edit
-                          </button>
-
-                          <button
-                            onClick={() =>
-                              handleSubjectStatusChange(
-                                subject.SubjectId,
-                                subject.IsActive ? 0 : 1
-                              )
-                            }
-                            className={`rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap ${
+                        <td className="px-4 sm:px-6 py-4 sm:py-6">
+                          <span
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${
                               subject.IsActive
-                                ? "bg-red-100 text-red-700 hover:bg-red-200"
-                                : "bg-green-100 text-green-700 hover:bg-green-200"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
                             }`}
                           >
-                            {subject.IsActive ? "Deactivate" : "Activate"}
-                          </button>
+                            {subject.IsActive ? "Active" : "Inactive"}
+                          </span>
+                        </td>
 
-                          <button
-                            onClick={() => handleDeleteSubject(subject.SubjectId)}
-                            className="rounded-xl bg-gray-900 text-white hover:bg-black px-4 py-2 text-sm font-semibold whitespace-nowrap"
+                        <td className="px-4 sm:px-6 py-4 sm:py-6">
+                          {subject.CreatedAt ? (
+                            <div className="min-w-[180px] sm:min-w-[210px] rounded-2xl border border-[#e3d3bb] bg-white px-3 sm:px-4 py-3 shadow-sm">
+                              <div className="flex items-center gap-2 sm:gap-3 text-black font-semibold text-sm sm:text-[15px]">
+                                <span className="text-base sm:text-lg">📅</span>
+                                <span>{formatDate(subject.CreatedAt)}</span>
+                              </div>
+
+                              <div className="mt-2 flex items-center gap-2 sm:gap-3 text-gray-600 text-xs sm:text-sm flex-wrap">
+                                <span className="text-sm sm:text-base">🕒</span>
+                                <span>{formatTime(subject.CreatedAt)}</span>
+
+                                {getDayLabel(subject.CreatedAt) && (
+                                  <span className="rounded-full bg-[#eee4d6] px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-semibold text-[#9b7440]">
+                                    {getDayLabel(subject.CreatedAt)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+
+                        <td className="px-4 sm:px-6 py-4 sm:py-6">
+                          <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+                            <button
+                              onClick={() => handleEdit(subject)}
+                              className="rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 px-4 py-2 text-sm font-semibold whitespace-nowrap"
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                handleSubjectStatusChange(
+                                  subject.SubjectId,
+                                  subject.IsActive ? 0 : 1
+                                )
+                              }
+                              className={`rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap ${
+                                subject.IsActive
+                                  ? "bg-red-100 text-red-700 hover:bg-red-200"
+                                  : "bg-green-100 text-green-700 hover:bg-green-200"
+                              }`}
+                            >
+                              {subject.IsActive ? "Deactivate" : "Activate"}
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteSubject(subject.SubjectId)}
+                              className="rounded-xl bg-gray-900 text-white hover:bg-black px-4 py-2 text-sm font-semibold whitespace-nowrap"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Pagination inside same section */}
+                {filteredSubjects.length > 0 && totalPages > 1 && (
+                  <div className="mt-6 flex flex-col items-center gap-4 border-t border-[#eadcc8] bg-white px-4 py-6">
+                    <p className="text-sm text-[#6b7280] text-center">
+                      Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                      {Math.min(currentPage * ITEMS_PER_PAGE, filteredSubjects.length)} of{" "}
+                      {filteredSubjects.length} subjects
+                    </p>
+
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <button
+                        onClick={() => goToPage(1)}
+                        disabled={currentPage === 1}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ≪
+                      </button>
+
+                      <button
+                        onClick={goToPreviousPage}
+                        disabled={currentPage === 1}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ‹
+                      </button>
+
+                      {getVisiblePages().map((page, index) =>
+                        page === "..." ? (
+                          <span
+                            key={`ellipsis-${index}`}
+                            className="flex h-12 min-w-[48px] items-center justify-center rounded-2xl px-3 text-lg font-semibold text-[#6b7280]"
                           >
-                            Delete
+                            ...
+                          </span>
+                        ) : (
+                          <button
+                            key={page}
+                            onClick={() => goToPage(page)}
+                            className={`h-12 min-w-[48px] rounded-2xl px-4 text-lg font-semibold transition ${
+                              currentPage === page
+                                ? "bg-blue-500 text-white shadow-md"
+                                : "border border-[#d6c2a8] bg-white text-[#1a1a1a] hover:bg-[#efe4d2]"
+                            }`}
+                          >
+                            {page}
                           </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        )
+                      )}
+
+                      <button
+                        onClick={goToNextPage}
+                        disabled={currentPage === totalPages}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ›
+                      </button>
+
+                      <button
+                        onClick={() => goToPage(totalPages)}
+                        disabled={currentPage === totalPages}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ≫
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
       </div>
 
+      {/* =========================================
+          Create / Edit subject modal
+         ========================================= */}
       {showSubjectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-3 sm:px-4 py-4">
           <div className="relative w-full max-w-[680px] max-h-[90vh] overflow-y-auto rounded-[24px] sm:rounded-[30px] border border-[#d8c3a0] bg-white shadow-2xl">
@@ -552,7 +810,10 @@ const SubjectsManagement = () => {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5">
+            <form
+              onSubmit={handleSubmit}
+              className="p-4 sm:p-6 space-y-4 sm:space-y-5"
+            >
               <div>
                 <label className="block text-sm font-semibold text-black mb-2">
                   Subject Name

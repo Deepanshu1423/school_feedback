@@ -2,15 +2,24 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "../../api/axios";
 
 const AllFeedbacksManagement = () => {
+  // =========================================
+  // Main data states
+  // =========================================
   const [feedbacks, setFeedbacks] = useState([]);
   const [classes, setClasses] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [forms, setForms] = useState([]);
 
+  // =========================================
+  // UI states
+  // =========================================
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // =========================================
+  // Filter states
+  // =========================================
   const [searchTerm, setSearchTerm] = useState("");
   const [classFilter, setClassFilter] = useState("all");
   const [teacherFilter, setTeacherFilter] = useState("all");
@@ -18,14 +27,27 @@ const AllFeedbacksManagement = () => {
   const [formFilter, setFormFilter] = useState("all");
   const [responseFilter, setResponseFilter] = useState("all");
 
-  const [parentSort, setParentSort] = useState("default");
-  const [studentSort, setStudentSort] = useState("default");
-  const [classSort, setClassSort] = useState("default");
-  const [teacherSort, setTeacherSort] = useState("default");
-  const [subjectSort, setSubjectSort] = useState("default");
-  const [ratingSort, setRatingSort] = useState("default");
-  const [submittedSort, setSubmittedSort] = useState("default");
+  // =========================================
+  // Sort states
+  // "" = default / no sorting
+  // =========================================
+  const [parentSort, setParentSort] = useState("");
+  const [studentSort, setStudentSort] = useState("");
+  const [classSort, setClassSort] = useState("");
+  const [teacherSort, setTeacherSort] = useState("");
+  const [subjectSort, setSubjectSort] = useState("");
+  const [ratingSort, setRatingSort] = useState("");
+  const [submittedSort, setSubmittedSort] = useState("");
 
+  // =========================================
+  // Pagination states
+  // =========================================
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  // =========================================
+  // Auth headers for protected API calls
+  // =========================================
   const getAuthHeaders = () => {
     const token = localStorage.getItem("token");
     return {
@@ -33,10 +55,16 @@ const AllFeedbacksManagement = () => {
     };
   };
 
+  // =========================================
+  // Initial page load
+  // =========================================
   useEffect(() => {
     fetchAllData();
   }, []);
 
+  // =========================================
+  // Fetch all required data from backend
+  // =========================================
   const fetchAllData = async () => {
     try {
       setLoading(true);
@@ -63,28 +91,91 @@ const AllFeedbacksManagement = () => {
     }
   };
 
+  // =========================================
+  // Reset all sorting
+  // =========================================
   const resetAllSorts = () => {
-    setParentSort("default");
-    setStudentSort("default");
-    setClassSort("default");
-    setTeacherSort("default");
-    setSubjectSort("default");
-    setRatingSort("default");
-    setSubmittedSort("default");
+    setParentSort("");
+    setStudentSort("");
+    setClassSort("");
+    setTeacherSort("");
+    setSubjectSort("");
+    setRatingSort("");
+    setSubmittedSort("");
   };
 
-  const setOnlyActiveSort = (type, value) => {
-    resetAllSorts();
+  // =========================================
+  // Toggle sorting for each column
+  // Text columns: asc -> desc -> default
+  // Numeric/date columns: desc/latest -> asc/oldest -> default
+  // =========================================
+  const toggleSort = (type) => {
+    if (type === "parent") {
+      const next = parentSort === "" ? "asc" : parentSort === "asc" ? "desc" : "";
+      resetAllSorts();
+      setParentSort(next);
+    }
 
-    if (type === "parent") setParentSort(value);
-    if (type === "student") setStudentSort(value);
-    if (type === "class") setClassSort(value);
-    if (type === "teacher") setTeacherSort(value);
-    if (type === "subject") setSubjectSort(value);
-    if (type === "rating") setRatingSort(value);
-    if (type === "submitted") setSubmittedSort(value);
+    if (type === "student") {
+      const next = studentSort === "" ? "asc" : studentSort === "asc" ? "desc" : "";
+      resetAllSorts();
+      setStudentSort(next);
+    }
+
+    if (type === "class") {
+      const next = classSort === "" ? "asc" : classSort === "asc" ? "desc" : "";
+      resetAllSorts();
+      setClassSort(next);
+    }
+
+    if (type === "teacher") {
+      const next = teacherSort === "" ? "asc" : teacherSort === "asc" ? "desc" : "";
+      resetAllSorts();
+      setTeacherSort(next);
+    }
+
+    if (type === "subject") {
+      const next = subjectSort === "" ? "asc" : subjectSort === "asc" ? "desc" : "";
+      resetAllSorts();
+      setSubjectSort(next);
+    }
+
+    if (type === "rating") {
+      const next = ratingSort === "" ? "desc" : ratingSort === "desc" ? "asc" : "";
+      resetAllSorts();
+      setRatingSort(next);
+    }
+
+    if (type === "submitted") {
+      const next =
+        submittedSort === ""
+          ? "latest"
+          : submittedSort === "latest"
+          ? "oldest"
+          : "";
+      resetAllSorts();
+      setSubmittedSort(next);
+    }
   };
 
+  // =========================================
+  // Show sort indicator arrows in UI
+  // =========================================
+  const getSortIndicator = (sortValue, type = "default") => {
+    if (type === "date") {
+      if (sortValue === "latest") return " ↓";
+      if (sortValue === "oldest") return " ↑";
+      return "";
+    }
+
+    if (sortValue === "asc") return " ↑";
+    if (sortValue === "desc") return " ↓";
+    return "";
+  };
+
+  // =========================================
+  // Clear all filters + sorting
+  // =========================================
   const handleClearFilters = () => {
     setSearchTerm("");
     setClassFilter("all");
@@ -93,8 +184,33 @@ const AllFeedbacksManagement = () => {
     setFormFilter("all");
     setResponseFilter("all");
     resetAllSorts();
+    setCurrentPage(1);
   };
 
+  // =========================================
+  // Reset page when filters or sorting change
+  // =========================================
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    searchTerm,
+    classFilter,
+    teacherFilter,
+    subjectFilter,
+    formFilter,
+    responseFilter,
+    parentSort,
+    studentSort,
+    classSort,
+    teacherSort,
+    subjectSort,
+    ratingSort,
+    submittedSort,
+  ]);
+
+  // =========================================
+  // Date helpers for submitted date display
+  // =========================================
   const formatDate = (dateValue) => {
     if (!dateValue) return "-";
     const date = new Date(dateValue);
@@ -138,6 +254,9 @@ const AllFeedbacksManagement = () => {
     return "";
   };
 
+  // =========================================
+  // Filtered + sorted feedback list
+  // =========================================
   const filteredFeedbacks = useMemo(() => {
     let result = feedbacks.filter((item) => {
       const q = searchTerm.toLowerCase();
@@ -183,10 +302,15 @@ const AllFeedbacksManagement = () => {
       );
     });
 
+    // Helper for numeric + text class sorting
     const getClassValue = (item) => {
       const raw = String(item.ClassName || "").trim();
       const num = Number(raw);
-      if (!Number.isNaN(num) && raw !== "") return { isNumeric: true, value: num };
+
+      if (!Number.isNaN(num) && raw !== "") {
+        return { isNumeric: true, value: num };
+      }
+
       return { isNumeric: false, value: raw.toLowerCase() };
     };
 
@@ -210,6 +334,7 @@ const AllFeedbacksManagement = () => {
       result = [...result].sort((a, b) => {
         const av = getClassValue(a);
         const bv = getClassValue(b);
+
         if (av.isNumeric && bv.isNumeric) return av.value - bv.value;
         if (av.isNumeric && !bv.isNumeric) return -1;
         if (!av.isNumeric && bv.isNumeric) return 1;
@@ -219,6 +344,7 @@ const AllFeedbacksManagement = () => {
       result = [...result].sort((a, b) => {
         const av = getClassValue(a);
         const bv = getClassValue(b);
+
         if (av.isNumeric && bv.isNumeric) return bv.value - av.value;
         if (av.isNumeric && !bv.isNumeric) return 1;
         if (!av.isNumeric && bv.isNumeric) return -1;
@@ -276,12 +402,84 @@ const AllFeedbacksManagement = () => {
     submittedSort,
   ]);
 
+  // =========================================
+  // Summary values
+  // =========================================
   const respondedCount = filteredFeedbacks.filter(
     (item) => item.TeacherResponse && item.TeacherResponse.trim() !== ""
   ).length;
 
   const pendingCount = filteredFeedbacks.length - respondedCount;
 
+  // =========================================
+  // Pagination calculations
+  // =========================================
+  const totalPages = Math.ceil(filteredFeedbacks.length / ITEMS_PER_PAGE);
+
+  const paginatedFeedbacks = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredFeedbacks.slice(startIndex, endIndex);
+  }, [filteredFeedbacks, currentPage]);
+
+  // =========================================
+  // Pagination actions
+  // =========================================
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
+
+  const goToPage = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // =========================================
+  // Build visible page numbers like:
+  // << < 1 2 3 ... 10 > >>
+  // =========================================
+  const getVisiblePages = () => {
+    const pages = [];
+
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+      return pages;
+    }
+
+    pages.push(1);
+
+    if (currentPage > 3) {
+      pages.push("...");
+    }
+
+    const startPage = Math.max(2, currentPage - 1);
+    const endPage = Math.min(totalPages - 1, currentPage + 1);
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    if (currentPage < totalPages - 2) {
+      pages.push("...");
+    }
+
+    pages.push(totalPages);
+
+    return pages;
+  };
+
+  // =========================================
+  // Mobile / small-screen feedback card
+  // =========================================
   const FeedbackCard = ({ item }) => {
     const hasResponse =
       item.TeacherResponse && item.TeacherResponse.trim() !== "";
@@ -391,6 +589,9 @@ const AllFeedbacksManagement = () => {
     );
   };
 
+  // =========================================
+  // Loading state
+  // =========================================
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center text-xl font-semibold text-black">
@@ -401,6 +602,9 @@ const AllFeedbacksManagement = () => {
 
   return (
     <div className="space-y-6 w-full max-w-full overflow-x-hidden">
+      {/* =========================================
+          Summary cards
+         ========================================= */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full max-w-full">
         <div className="rounded-[24px] border border-[#d8c3a0] bg-white px-6 py-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9b7440]">
@@ -429,12 +633,16 @@ const AllFeedbacksManagement = () => {
         </div>
       </div>
 
+      {/* Error message */}
       {error && (
         <div className="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
       )}
 
+      {/* =========================================
+          Filter section
+         ========================================= */}
       <div className="w-full max-w-full bg-white border border-[#d8c3a0] rounded-[28px] shadow-lg overflow-hidden">
         <div className="bg-[#f1e7d7] px-6 py-5 border-b border-[#dcc7a6] space-y-4">
           <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -526,96 +734,145 @@ const AllFeedbacksManagement = () => {
           </div>
         </div>
 
+        {/* =========================================
+            Mobile / tablet view
+           ========================================= */}
         <div className="block 2xl:hidden p-4 space-y-4 bg-[#fcfaf6]">
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
-            <select
-              value={parentSort === "asc" || parentSort === "desc" ? parentSort : "default"}
-              onChange={(e) => setOnlyActiveSort("parent", e.target.value)}
-              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+            <button
+              onClick={() => toggleSort("parent")}
+              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
             >
-              <option value="default">Parent</option>
-              <option value="asc">A-Z</option>
-              <option value="desc">Z-A</option>
-            </select>
+              Parent{getSortIndicator(parentSort)}
+            </button>
 
-            <select
-              value={studentSort === "asc" || studentSort === "desc" ? studentSort : "default"}
-              onChange={(e) => setOnlyActiveSort("student", e.target.value)}
-              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+            <button
+              onClick={() => toggleSort("student")}
+              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
             >
-              <option value="default">Student</option>
-              <option value="asc">A-Z</option>
-              <option value="desc">Z-A</option>
-            </select>
+              Student{getSortIndicator(studentSort)}
+            </button>
 
-            <select
-              value={classSort === "asc" || classSort === "desc" ? classSort : "default"}
-              onChange={(e) => setOnlyActiveSort("class", e.target.value)}
-              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+            <button
+              onClick={() => toggleSort("class")}
+              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
             >
-              <option value="default">Class</option>
-              <option value="asc">Low-High</option>
-              <option value="desc">High-Low</option>
-            </select>
+              Class{getSortIndicator(classSort)}
+            </button>
 
-            <select
-              value={teacherSort === "asc" || teacherSort === "desc" ? teacherSort : "default"}
-              onChange={(e) => setOnlyActiveSort("teacher", e.target.value)}
-              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+            <button
+              onClick={() => toggleSort("teacher")}
+              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
             >
-              <option value="default">Teacher</option>
-              <option value="asc">A-Z</option>
-              <option value="desc">Z-A</option>
-            </select>
+              Teacher{getSortIndicator(teacherSort)}
+            </button>
 
-            <select
-              value={subjectSort === "asc" || subjectSort === "desc" ? subjectSort : "default"}
-              onChange={(e) => setOnlyActiveSort("subject", e.target.value)}
-              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+            <button
+              onClick={() => toggleSort("subject")}
+              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
             >
-              <option value="default">Subject</option>
-              <option value="asc">A-Z</option>
-              <option value="desc">Z-A</option>
-            </select>
+              Subject{getSortIndicator(subjectSort)}
+            </button>
 
-            <select
-              value={ratingSort === "asc" || ratingSort === "desc" ? ratingSort : "default"}
-              onChange={(e) => setOnlyActiveSort("rating", e.target.value)}
-              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+            <button
+              onClick={() => toggleSort("rating")}
+              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
             >
-              <option value="default">Rating</option>
-              <option value="asc">Low-High</option>
-              <option value="desc">High-Low</option>
-            </select>
+              Rating{getSortIndicator(ratingSort)}
+            </button>
 
-            <select
-              value={
-                submittedSort === "latest" || submittedSort === "oldest"
-                  ? submittedSort
-                  : "default"
-              }
-              onChange={(e) => setOnlyActiveSort("submitted", e.target.value)}
-              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+            <button
+              onClick={() => toggleSort("submitted")}
+              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
             >
-              <option value="default">Submitted At</option>
-              <option value="latest">Latest</option>
-              <option value="oldest">Oldest</option>
-            </select>
+              Submitted{getSortIndicator(submittedSort, "date")}
+            </button>
           </div>
 
-          {filteredFeedbacks.length === 0 ? (
+          {paginatedFeedbacks.length === 0 ? (
             <div className="p-8 text-center text-gray-600">
               No feedback records found
             </div>
           ) : (
-            filteredFeedbacks.map((item) => (
+            paginatedFeedbacks.map((item) => (
               <FeedbackCard key={item.FeedbackId} item={item} />
             ))
           )}
+
+          {/* Mobile pagination */}
+          {filteredFeedbacks.length > 0 && totalPages > 1 && (
+            <div className="rounded-2xl border border-[#d6c2a8] bg-white p-4 shadow-sm">
+              <p className="mb-4 text-center text-sm text-[#6b7280]">
+                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                {Math.min(currentPage * ITEMS_PER_PAGE, filteredFeedbacks.length)} of{" "}
+                {filteredFeedbacks.length} records
+              </p>
+
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  onClick={() => goToPage(1)}
+                  disabled={currentPage === 1}
+                  className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  ≪
+                </button>
+
+                <button
+                  onClick={goToPreviousPage}
+                  disabled={currentPage === 1}
+                  className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  ‹
+                </button>
+
+                {getVisiblePages().map((page, index) =>
+                  page === "..." ? (
+                    <span
+                      key={`ellipsis-mobile-${index}`}
+                      className="flex h-11 min-w-[44px] items-center justify-center rounded-2xl px-2 text-base font-semibold text-[#6b7280]"
+                    >
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={`mobile-${page}`}
+                      onClick={() => goToPage(page)}
+                      className={`h-11 min-w-[44px] rounded-2xl px-3 text-base font-semibold transition ${
+                        currentPage === page
+                          ? "bg-blue-500 text-white shadow-md"
+                          : "border border-[#d6c2a8] bg-white text-[#1a1a1a] hover:bg-[#efe4d2]"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                )}
+
+                <button
+                  onClick={goToNextPage}
+                  disabled={currentPage === totalPages}
+                  className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  ›
+                </button>
+
+                <button
+                  onClick={() => goToPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  ≫
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
+        {/* =========================================
+            Laptop / desktop table view
+           ========================================= */}
         <div className="hidden 2xl:block w-full max-w-full bg-[#fcfaf6]">
-          {filteredFeedbacks.length === 0 ? (
+          {paginatedFeedbacks.length === 0 ? (
             <div className="p-8 text-center text-gray-600">
               No feedback records found
             </div>
@@ -625,98 +882,50 @@ const AllFeedbacksManagement = () => {
                 <table className="w-full bg-white border-t border-[#eadcc8]">
                   <thead className="bg-[#fbf7f0]">
                     <tr>
-                      <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                        <div className="flex flex-col gap-2">
-                          <span>Parent</span>
-                          <select
-                            value={parentSort === "asc" || parentSort === "desc" ? parentSort : "default"}
-                            onChange={(e) => setOnlyActiveSort("parent", e.target.value)}
-                            className="w-[64px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px] font-medium text-black outline-none"
-                          >
-                            <option value="default">Def</option>
-                            <option value="asc">A-Z</option>
-                            <option value="desc">Z-A</option>
-                          </select>
-                        </div>
+                      <th
+                        onClick={() => toggleSort("parent")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Parent{getSortIndicator(parentSort)}
                       </th>
 
-                      <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                        <div className="flex flex-col gap-2">
-                          <span>Student</span>
-                          <select
-                            value={studentSort === "asc" || studentSort === "desc" ? studentSort : "default"}
-                            onChange={(e) => setOnlyActiveSort("student", e.target.value)}
-                            className="w-[64px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px] font-medium text-black outline-none"
-                          >
-                            <option value="default">Def</option>
-                            <option value="asc">A-Z</option>
-                            <option value="desc">Z-A</option>
-                          </select>
-                        </div>
+                      <th
+                        onClick={() => toggleSort("student")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Student{getSortIndicator(studentSort)}
                       </th>
 
-                      <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                        <div className="flex flex-col gap-2">
-                          <span>Class</span>
-                          <select
-                            value={classSort === "asc" || classSort === "desc" ? classSort : "default"}
-                            onChange={(e) => setOnlyActiveSort("class", e.target.value)}
-                            className="w-[78px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px] font-medium text-black outline-none"
-                          >
-                            <option value="default">Def</option>
-                            <option value="asc">Low-Hi</option>
-                            <option value="desc">High-Lo</option>
-                          </select>
-                        </div>
+                      <th
+                        onClick={() => toggleSort("class")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Class{getSortIndicator(classSort)}
                       </th>
 
-                      <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                        <div className="flex flex-col gap-2">
-                          <span>Teacher</span>
-                          <select
-                            value={teacherSort === "asc" || teacherSort === "desc" ? teacherSort : "default"}
-                            onChange={(e) => setOnlyActiveSort("teacher", e.target.value)}
-                            className="w-[64px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px] font-medium text-black outline-none"
-                          >
-                            <option value="default">Def</option>
-                            <option value="asc">A-Z</option>
-                            <option value="desc">Z-A</option>
-                          </select>
-                        </div>
+                      <th
+                        onClick={() => toggleSort("teacher")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Teacher{getSortIndicator(teacherSort)}
                       </th>
 
-                      <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                        <div className="flex flex-col gap-2">
-                          <span>Subject</span>
-                          <select
-                            value={subjectSort === "asc" || subjectSort === "desc" ? subjectSort : "default"}
-                            onChange={(e) => setOnlyActiveSort("subject", e.target.value)}
-                            className="w-[64px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px] font-medium text-black outline-none"
-                          >
-                            <option value="default">Def</option>
-                            <option value="asc">A-Z</option>
-                            <option value="desc">Z-A</option>
-                          </select>
-                        </div>
+                      <th
+                        onClick={() => toggleSort("subject")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Subject{getSortIndicator(subjectSort)}
                       </th>
 
                       <th className="text-left px-3 py-3 text-sm font-bold text-black">
                         Form
                       </th>
 
-                      <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                        <div className="flex flex-col gap-2">
-                          <span>Rating</span>
-                          <select
-                            value={ratingSort === "asc" || ratingSort === "desc" ? ratingSort : "default"}
-                            onChange={(e) => setOnlyActiveSort("rating", e.target.value)}
-                            className="w-[78px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px] font-medium text-black outline-none"
-                          >
-                            <option value="default">Def</option>
-                            <option value="asc">Low-Hi</option>
-                            <option value="desc">High-Lo</option>
-                          </select>
-                        </div>
+                      <th
+                        onClick={() => toggleSort("rating")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Rating{getSortIndicator(ratingSort)}
                       </th>
 
                       <th className="text-left px-3 py-3 text-sm font-bold text-black">
@@ -727,29 +936,17 @@ const AllFeedbacksManagement = () => {
                         Teacher Response
                       </th>
 
-                      <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                        <div className="flex flex-col gap-2">
-                          <span>Submitted At</span>
-                          <select
-                            value={
-                              submittedSort === "latest" || submittedSort === "oldest"
-                                ? submittedSort
-                                : "default"
-                            }
-                            onChange={(e) => setOnlyActiveSort("submitted", e.target.value)}
-                            className="w-[78px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px] font-medium text-black outline-none"
-                          >
-                            <option value="default">Def</option>
-                            <option value="latest">Latest</option>
-                            <option value="oldest">Oldest</option>
-                          </select>
-                        </div>
+                      <th
+                        onClick={() => toggleSort("submitted")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Submitted At{getSortIndicator(submittedSort, "date")}
                       </th>
                     </tr>
                   </thead>
 
                   <tbody>
-                    {filteredFeedbacks.map((item) => (
+                    {paginatedFeedbacks.map((item) => (
                       <tr
                         key={item.FeedbackId}
                         className="border-t border-[#eee2cf] hover:bg-[#fcfaf6] align-top"
@@ -855,6 +1052,74 @@ const AllFeedbacksManagement = () => {
                     ))}
                   </tbody>
                 </table>
+
+                {/* Desktop pagination inside same section */}
+                {filteredFeedbacks.length > 0 && totalPages > 1 && (
+                  <div className="mt-6 flex flex-col items-center gap-4 border-t border-[#eadcc8] bg-white px-4 py-6">
+                    <p className="text-sm text-[#6b7280] text-center">
+                      Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                      {Math.min(currentPage * ITEMS_PER_PAGE, filteredFeedbacks.length)} of{" "}
+                      {filteredFeedbacks.length} records
+                    </p>
+
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <button
+                        onClick={() => goToPage(1)}
+                        disabled={currentPage === 1}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ≪
+                      </button>
+
+                      <button
+                        onClick={goToPreviousPage}
+                        disabled={currentPage === 1}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ‹
+                      </button>
+
+                      {getVisiblePages().map((page, index) =>
+                        page === "..." ? (
+                          <span
+                            key={`ellipsis-${index}`}
+                            className="flex h-12 min-w-[48px] items-center justify-center rounded-2xl px-3 text-lg font-semibold text-[#6b7280]"
+                          >
+                            ...
+                          </span>
+                        ) : (
+                          <button
+                            key={page}
+                            onClick={() => goToPage(page)}
+                            className={`h-12 min-w-[48px] rounded-2xl px-4 text-lg font-semibold transition ${
+                              currentPage === page
+                                ? "bg-blue-500 text-white shadow-md"
+                                : "border border-[#d6c2a8] bg-white text-[#1a1a1a] hover:bg-[#efe4d2]"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        )
+                      )}
+
+                      <button
+                        onClick={goToNextPage}
+                        disabled={currentPage === totalPages}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ›
+                      </button>
+
+                      <button
+                        onClick={() => goToPage(totalPages)}
+                        disabled={currentPage === totalPages}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ≫
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

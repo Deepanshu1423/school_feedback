@@ -6,6 +6,9 @@ const FeedbackHistory = () => {
   const navigate = useNavigate();
   const { parentId } = useParams();
 
+  // =========================================
+  // Selected student state from localStorage
+  // =========================================
   const [selectedStudentId, setSelectedStudentId] = useState(
     localStorage.getItem("selectedStudentId") || ""
   );
@@ -13,6 +16,9 @@ const FeedbackHistory = () => {
     localStorage.getItem("selectedStudentName") || ""
   );
 
+  // =========================================
+  // Main page states
+  // =========================================
   const [students, setStudents] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -20,10 +26,22 @@ const FeedbackHistory = () => {
   const [message, setMessage] = useState("");
   const [feedbackData, setFeedbackData] = useState([]);
 
+  // =========================================
+  // Sorting states
+  // =========================================
   const [teacherSort, setTeacherSort] = useState("");
   const [ratingSort, setRatingSort] = useState("");
   const [submittedSort, setSubmittedSort] = useState("");
 
+  // =========================================
+  // Pagination states
+  // =========================================
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  // =========================================
+  // Load students for the selected parent
+  // =========================================
   useEffect(() => {
     const fetchStudents = async () => {
       try {
@@ -40,8 +58,8 @@ const FeedbackHistory = () => {
 
           const activeStudent = exists
             ? studentsData.find(
-                (student) => String(student.studentId) === String(storedStudentId)
-              )
+              (student) => String(student.studentId) === String(storedStudentId)
+            )
             : studentsData[0];
 
           if (activeStudent) {
@@ -55,10 +73,9 @@ const FeedbackHistory = () => {
             );
             localStorage.setItem(
               "selectedStudentClass",
-              `${activeStudent.class?.className || ""}${
-                activeStudent.class?.section
-                  ? `-${activeStudent.class.section}`
-                  : ""
+              `${activeStudent.class?.className || ""}${activeStudent.class?.section
+                ? `-${activeStudent.class.section}`
+                : ""
               }`
             );
             localStorage.setItem(
@@ -80,6 +97,9 @@ const FeedbackHistory = () => {
     }
   }, [parentId]);
 
+  // =========================================
+  // Load feedback history
+  // =========================================
   useEffect(() => {
     const fetchFeedbackHistory = async () => {
       try {
@@ -102,6 +122,23 @@ const FeedbackHistory = () => {
     }
   }, [parentId]);
 
+  // =========================================
+  // Reset to page 1 whenever filters or sorting change
+  // =========================================
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    searchTerm,
+    statusFilter,
+    selectedStudentId,
+    teacherSort,
+    ratingSort,
+    submittedSort,
+  ]);
+
+  // =========================================
+  // Format date and time for display
+  // =========================================
   const formatDateTime = (dateValue) => {
     if (!dateValue) {
       return {
@@ -159,6 +196,47 @@ const FeedbackHistory = () => {
     };
   };
 
+  // =========================================
+  // Toggle sorting for table/card data
+  // =========================================
+  const toggleSort = (column) => {
+    if (column === "teacher") {
+      const nextSort =
+        teacherSort === "" ? "asc" : teacherSort === "asc" ? "desc" : "";
+      setTeacherSort(nextSort);
+      setRatingSort("");
+      setSubmittedSort("");
+    }
+
+    if (column === "rating") {
+      const nextSort =
+        ratingSort === "" ? "asc" : ratingSort === "asc" ? "desc" : "";
+      setRatingSort(nextSort);
+      setTeacherSort("");
+      setSubmittedSort("");
+    }
+
+    if (column === "submitted") {
+      const nextSort =
+        submittedSort === "" ? "asc" : submittedSort === "asc" ? "desc" : "";
+      setSubmittedSort(nextSort);
+      setTeacherSort("");
+      setRatingSort("");
+    }
+  };
+
+  // =========================================
+  // Show sort arrow beside column name
+  // =========================================
+  const getSortIndicator = (sortValue) => {
+    if (sortValue === "asc") return " ↑";
+    if (sortValue === "desc") return " ↓";
+    return "";
+  };
+
+  // =========================================
+  // Handle selected student change
+  // =========================================
   const handleStudentChange = (e) => {
     const newStudentId = e.target.value;
 
@@ -171,8 +249,7 @@ const FeedbackHistory = () => {
       localStorage.setItem("selectedStudentName", selected.studentName || "");
       localStorage.setItem(
         "selectedStudentClass",
-        `${selected.class?.className || ""}${
-          selected.class?.section ? `-${selected.class.section}` : ""
+        `${selected.class?.className || ""}${selected.class?.section ? `-${selected.class.section}` : ""
         }`
       );
       localStorage.setItem(
@@ -188,43 +265,42 @@ const FeedbackHistory = () => {
       setTeacherSort("");
       setRatingSort("");
       setSubmittedSort("");
+      setCurrentPage(1);
 
       window.location.reload();
     }
   };
 
-  const handleTeacherSort = (value) => {
-    setTeacherSort(value);
-    if (value) {
-      setRatingSort("");
-      setSubmittedSort("");
-    }
+  // =========================================
+  // Logout handler
+  // =========================================
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("selectedStudentId");
+    localStorage.removeItem("selectedStudentName");
+    localStorage.removeItem("selectedStudentClass");
+    localStorage.removeItem("selectedStudentClassId");
+
+    navigate("/");
   };
 
-  const handleRatingSort = (value) => {
-    setRatingSort(value);
-    if (value) {
-      setTeacherSort("");
-      setSubmittedSort("");
-    }
-  };
-
-  const handleSubmittedSort = (value) => {
-    setSubmittedSort(value);
-    if (value) {
-      setTeacherSort("");
-      setRatingSort("");
-    }
-  };
-
+  // =========================================
+  // Clear all filters and sorting
+  // =========================================
   const clearAllFilters = () => {
     setSearchTerm("");
     setStatusFilter("All");
     setTeacherSort("");
     setRatingSort("");
     setSubmittedSort("");
+    setCurrentPage(1);
   };
 
+  // =========================================
+  // Filter and sort feedback records
+  // Default sort = latest submitted first
+  // =========================================
   const filteredFeedback = useMemo(() => {
     let data = feedbackData.filter((item) => {
       const teacherText = (
@@ -299,6 +375,12 @@ const FeedbackHistory = () => {
         const bValue = b.SubmittedAt ? new Date(b.SubmittedAt).getTime() : 0;
         return submittedSort === "asc" ? aValue - bValue : bValue - aValue;
       });
+    } else {
+      data.sort((a, b) => {
+        const aValue = a.SubmittedAt ? new Date(a.SubmittedAt).getTime() : 0;
+        const bValue = b.SubmittedAt ? new Date(b.SubmittedAt).getTime() : 0;
+        return bValue - aValue;
+      });
     }
 
     return data;
@@ -312,6 +394,9 @@ const FeedbackHistory = () => {
     submittedSort,
   ]);
 
+  // =========================================
+  // Summary counts
+  // =========================================
   const totalRecords = filteredFeedback.length;
   const respondedCount = filteredFeedback.filter(
     (item) => item.TeacherResponse && item.TeacherResponse.trim() !== ""
@@ -319,6 +404,72 @@ const FeedbackHistory = () => {
   const pendingCount = filteredFeedback.filter(
     (item) => !item.TeacherResponse || item.TeacherResponse.trim() === ""
   ).length;
+
+  // =========================================
+  // Pagination calculations
+  // =========================================
+  const totalPages = Math.ceil(filteredFeedback.length / ITEMS_PER_PAGE);
+
+  const paginatedFeedback = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredFeedback.slice(startIndex, endIndex);
+  }, [filteredFeedback, currentPage]);
+
+  // =========================================
+  // Pagination actions
+  // =========================================
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
+
+  const goToPage = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // =========================================
+  // Build visible pagination numbers like:
+  // << < 1 2 3 ... 10 > >>
+  // =========================================
+  const getVisiblePages = () => {
+    const pages = [];
+
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+      return pages;
+    }
+
+    pages.push(1);
+
+    if (currentPage > 3) {
+      pages.push("...");
+    }
+
+    const startPage = Math.max(2, currentPage - 1);
+    const endPage = Math.min(totalPages - 1, currentPage + 1);
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    if (currentPage < totalPages - 2) {
+      pages.push("...");
+    }
+
+    pages.push(totalPages);
+
+    return pages;
+  };
 
   return (
     <div className="min-h-screen bg-[#f7f1e8]">
@@ -344,13 +495,19 @@ const FeedbackHistory = () => {
                   <option key={student.studentId} value={student.studentId}>
                     {student.studentName}
                     {student.class?.className
-                      ? ` - ${student.class.className}${
-                          student.class?.section ? `-${student.class.section}` : ""
-                        }`
+                      ? ` - ${student.class.className}${student.class?.section ? `-${student.class.section}` : ""
+                      }`
                       : ""}
                   </option>
                 ))}
               </select>
+
+              <button
+                onClick={() => navigate(`/parent/profile/${parentId}`)}
+                className="rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
+              >
+                Profile
+              </button>
 
               <button
                 onClick={() => navigate(`/parent/dashboard/${parentId}`)}
@@ -364,6 +521,15 @@ const FeedbackHistory = () => {
                 className="rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
               >
                 Submit Feedback
+              </button>
+
+
+
+              <button
+                onClick={handleLogout}
+                className="rounded-xl bg-[#f1e7d7] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#e5d7c1]"
+              >
+                Logout
               </button>
             </div>
           </div>
@@ -477,24 +643,19 @@ const FeedbackHistory = () => {
                 </div>
               </section>
 
+              {/* =========================
+                  Desktop table view
+                 ========================= */}
               <section className="hidden rounded-3xl border border-[#d6c2a8] bg-[#fffaf3] p-5 shadow-md lg:block">
                 <div className="overflow-x-auto">
                   <table className="min-w-full border-separate border-spacing-y-2">
                     <thead>
                       <tr>
-                        <th className="px-4 py-2 text-left text-sm font-semibold text-[#6b7280]">
-                          <div className="flex items-center gap-2">
-                            <span>Teacher</span>
-                            <select
-                              value={teacherSort}
-                              onChange={(e) => handleTeacherSort(e.target.value)}
-                              className="rounded-lg border border-[#d6c2a8] bg-[#f7f1e8] px-2.5 py-1.5 text-xs text-[#1a1a1a] outline-none focus:border-[#b08d57]"
-                            >
-                              <option value="">Default</option>
-                              <option value="asc">A to Z</option>
-                              <option value="desc">Z to A</option>
-                            </select>
-                          </div>
+                        <th
+                          onClick={() => toggleSort("teacher")}
+                          className="cursor-pointer px-4 py-2 text-left text-sm font-semibold text-[#6b7280] select-none"
+                        >
+                          Teacher{getSortIndicator(teacherSort)}
                         </th>
 
                         <th className="px-4 py-2 text-left text-sm font-semibold text-[#6b7280]">
@@ -505,19 +666,11 @@ const FeedbackHistory = () => {
                           Category
                         </th>
 
-                        <th className="px-4 py-2 text-left text-sm font-semibold text-[#6b7280]">
-                          <div className="flex items-center gap-2">
-                            <span>Rating</span>
-                            <select
-                              value={ratingSort}
-                              onChange={(e) => handleRatingSort(e.target.value)}
-                              className="rounded-lg border border-[#d6c2a8] bg-[#f7f1e8] px-2.5 py-1.5 text-xs text-[#1a1a1a] outline-none focus:border-[#b08d57]"
-                            >
-                              <option value="">Default</option>
-                              <option value="asc">Low to High</option>
-                              <option value="desc">High to Low</option>
-                            </select>
-                          </div>
+                        <th
+                          onClick={() => toggleSort("rating")}
+                          className="cursor-pointer px-4 py-2 text-left text-sm font-semibold text-[#6b7280] select-none"
+                        >
+                          Rating{getSortIndicator(ratingSort)}
                         </th>
 
                         <th className="px-4 py-2 text-left text-sm font-semibold text-[#6b7280]">
@@ -528,19 +681,11 @@ const FeedbackHistory = () => {
                           Response
                         </th>
 
-                        <th className="px-4 py-2 text-left text-sm font-semibold text-[#6b7280]">
-                          <div className="flex items-center gap-2">
-                            <span>Submitted On</span>
-                            <select
-                              value={submittedSort}
-                              onChange={(e) => handleSubmittedSort(e.target.value)}
-                              className="rounded-lg border border-[#d6c2a8] bg-[#f7f1e8] px-2.5 py-1.5 text-xs text-[#1a1a1a] outline-none focus:border-[#b08d57]"
-                            >
-                              <option value="">Default</option>
-                              <option value="asc">Oldest First</option>
-                              <option value="desc">Newest First</option>
-                            </select>
-                          </div>
+                        <th
+                          onClick={() => toggleSort("submitted")}
+                          className="cursor-pointer px-4 py-2 text-left text-sm font-semibold text-[#6b7280] select-none"
+                        >
+                          Submitted On{getSortIndicator(submittedSort)}
                         </th>
 
                         <th className="px-4 py-2 text-left text-sm font-semibold text-[#6b7280]">
@@ -550,8 +695,8 @@ const FeedbackHistory = () => {
                     </thead>
 
                     <tbody>
-                      {filteredFeedback.length > 0 ? (
-                        filteredFeedback.map((item, index) => {
+                      {paginatedFeedback.length > 0 ? (
+                        paginatedFeedback.map((item, index) => {
                           const status =
                             item.TeacherResponse && item.TeacherResponse.trim() !== ""
                               ? "Responded"
@@ -611,11 +756,10 @@ const FeedbackHistory = () => {
                               </td>
                               <td className="rounded-r-xl px-4 py-4">
                                 <span
-                                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                    status === "Responded"
-                                      ? "bg-green-100 text-green-700"
-                                      : "bg-yellow-100 text-yellow-700"
-                                  }`}
+                                  className={`rounded-full px-3 py-1 text-xs font-semibold ${status === "Responded"
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-yellow-100 text-yellow-700"
+                                    }`}
                                 >
                                   {status}
                                 </span>
@@ -636,11 +780,81 @@ const FeedbackHistory = () => {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Desktop pagination inside same section */}
+                {filteredFeedback.length > 0 && totalPages > 1 && (
+                  <div className="mt-6 flex flex-col items-center gap-4 border-t border-[#eadcc8] pt-6">
+                    <p className="text-sm text-[#6b7280] text-center">
+                      Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                      {Math.min(currentPage * ITEMS_PER_PAGE, filteredFeedback.length)} of{" "}
+                      {filteredFeedback.length} records
+                    </p>
+
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <button
+                        onClick={() => goToPage(1)}
+                        disabled={currentPage === 1}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ≪
+                      </button>
+
+                      <button
+                        onClick={goToPreviousPage}
+                        disabled={currentPage === 1}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ‹
+                      </button>
+
+                      {getVisiblePages().map((page, index) =>
+                        page === "..." ? (
+                          <span
+                            key={`ellipsis-${index}`}
+                            className="flex h-12 min-w-[48px] items-center justify-center rounded-2xl px-3 text-lg font-semibold text-[#6b7280]"
+                          >
+                            ...
+                          </span>
+                        ) : (
+                          <button
+                            key={page}
+                            onClick={() => goToPage(page)}
+                            className={`h-12 min-w-[48px] rounded-2xl px-4 text-lg font-semibold transition ${currentPage === page
+                              ? "bg-blue-500 text-white shadow-md"
+                              : "border border-[#d6c2a8] bg-white text-[#1a1a1a] hover:bg-[#efe4d2]"
+                              }`}
+                          >
+                            {page}
+                          </button>
+                        )
+                      )}
+
+                      <button
+                        onClick={goToNextPage}
+                        disabled={currentPage === totalPages}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ›
+                      </button>
+
+                      <button
+                        onClick={() => goToPage(totalPages)}
+                        disabled={currentPage === totalPages}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ≫
+                      </button>
+                    </div>
+                  </div>
+                )}
               </section>
 
+              {/* =========================
+                  Mobile card view
+                 ========================= */}
               <section className="space-y-4 lg:hidden">
-                {filteredFeedback.length > 0 ? (
-                  filteredFeedback.map((item, index) => {
+                {paginatedFeedback.length > 0 ? (
+                  paginatedFeedback.map((item, index) => {
                     const status =
                       item.TeacherResponse && item.TeacherResponse.trim() !== ""
                         ? "Responded"
@@ -665,11 +879,10 @@ const FeedbackHistory = () => {
                           </div>
 
                           <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                              status === "Responded"
-                                ? "bg-green-100 text-green-700"
-                                : "bg-yellow-100 text-yellow-700"
-                            }`}
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${status === "Responded"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-yellow-100 text-yellow-700"
+                              }`}
                           >
                             {status}
                           </span>
@@ -732,6 +945,73 @@ const FeedbackHistory = () => {
                 ) : (
                   <div className="rounded-2xl border border-[#d6c2a8] bg-[#fffaf3] p-6 text-center text-sm font-medium text-[#6b7280] shadow-md">
                     No feedback records found.
+                  </div>
+                )}
+
+                {/* Mobile pagination inside same section */}
+                {filteredFeedback.length > 0 && totalPages > 1 && (
+                  <div className="rounded-2xl border border-[#d6c2a8] bg-[#fffaf3] p-4 shadow-md">
+                    <p className="mb-4 text-center text-sm text-[#6b7280]">
+                      Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                      {Math.min(currentPage * ITEMS_PER_PAGE, filteredFeedback.length)} of{" "}
+                      {filteredFeedback.length} records
+                    </p>
+
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <button
+                        onClick={() => goToPage(1)}
+                        disabled={currentPage === 1}
+                        className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ≪
+                      </button>
+
+                      <button
+                        onClick={goToPreviousPage}
+                        disabled={currentPage === 1}
+                        className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ‹
+                      </button>
+
+                      {getVisiblePages().map((page, index) =>
+                        page === "..." ? (
+                          <span
+                            key={`ellipsis-mobile-${index}`}
+                            className="flex h-11 min-w-[44px] items-center justify-center rounded-2xl px-2 text-base font-semibold text-[#6b7280]"
+                          >
+                            ...
+                          </span>
+                        ) : (
+                          <button
+                            key={`mobile-${page}`}
+                            onClick={() => goToPage(page)}
+                            className={`h-11 min-w-[44px] rounded-2xl px-3 text-base font-semibold transition ${currentPage === page
+                              ? "bg-blue-500 text-white shadow-md"
+                              : "border border-[#d6c2a8] bg-white text-[#1a1a1a] hover:bg-[#efe4d2]"
+                              }`}
+                          >
+                            {page}
+                          </button>
+                        )
+                      )}
+
+                      <button
+                        onClick={goToNextPage}
+                        disabled={currentPage === totalPages}
+                        className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ›
+                      </button>
+
+                      <button
+                        onClick={() => goToPage(totalPages)}
+                        disabled={currentPage === totalPages}
+                        className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ≫
+                      </button>
+                    </div>
                   </div>
                 )}
               </section>

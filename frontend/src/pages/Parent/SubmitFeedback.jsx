@@ -36,6 +36,7 @@ const SubmitFeedback = () => {
   );
 
   const [students, setStudents] = useState([]);
+  const [feedbackForms, setFeedbackForms] = useState([]);
 
   const [formData, setFormData] = useState({
     studentId: cleanStorageValue(localStorage.getItem("selectedStudentId")),
@@ -93,6 +94,7 @@ const SubmitFeedback = () => {
       const nextSubjects = data.subjects || [];
       const nextCategories = data.categories || [];
 
+      setFeedbackForms(forms);
       setTeachers(nextTeachers);
       setSubjects(nextSubjects);
       setCategories(nextCategories);
@@ -113,6 +115,29 @@ const SubmitFeedback = () => {
             )
           : true;
 
+        const currentFeedbackFormId = preserveFeedbackForm
+          ? prev.feedbackFormId || formIdFromQuery || ""
+          : formIdFromQuery || "";
+
+        const feedbackFormStillExists = currentFeedbackFormId
+          ? forms.some((form) => String(form.id) === String(currentFeedbackFormId))
+          : false;
+
+        let nextFeedbackFormId = "";
+
+        if (feedbackFormStillExists) {
+          nextFeedbackFormId = currentFeedbackFormId;
+        } else if (forms.length === 1) {
+          nextFeedbackFormId = String(forms[0].id);
+        } else if (formIdFromQuery) {
+          const queryFormExists = forms.some(
+            (form) => String(form.id) === String(formIdFromQuery)
+          );
+          nextFeedbackFormId = queryFormExists ? String(formIdFromQuery) : "";
+        } else {
+          nextFeedbackFormId = "";
+        }
+
         return {
           ...prev,
           studentId,
@@ -121,13 +146,12 @@ const SubmitFeedback = () => {
             requestedTeacherId && teacherStillExists ? requestedTeacherId : "",
           subjectId:
             requestedSubjectId && subjectStillExists ? requestedSubjectId : "",
-          feedbackFormId: preserveFeedbackForm
-            ? prev.feedbackFormId || formIdFromQuery || forms[0]?.id || ""
-            : formIdFromQuery || forms[0]?.id || "",
+          feedbackFormId: nextFeedbackFormId,
           categoryId: prev.categoryId || "",
         };
       });
     } catch (error) {
+      setFeedbackForms([]);
       setTeachers([]);
       setSubjects([]);
       setCategories([]);
@@ -159,7 +183,8 @@ const SubmitFeedback = () => {
             (student) => String(student.studentId) === String(storedStudentId)
           )
             ? studentsData.find(
-                (student) => String(student.studentId) === String(storedStudentId)
+                (student) =>
+                  String(student.studentId) === String(storedStudentId)
               )
             : studentsData[0];
 
@@ -251,6 +276,7 @@ const SubmitFeedback = () => {
       setSelectedStudentClass(classText);
       setSelectedStudentClassId(classId);
 
+      setFeedbackForms([]);
       setTeachers([]);
       setSubjects([]);
       setCategories([]);
@@ -264,6 +290,7 @@ const SubmitFeedback = () => {
         classId,
         teacherId: "",
         subjectId: "",
+        feedbackFormId: "",
         categoryId: "",
         rating: "",
         comments: "",
@@ -440,6 +467,13 @@ const SubmitFeedback = () => {
                 ))}
               </select>
 
+               <button
+                onClick={() => navigate(`/parent/profile/${parentId}`)}
+                className="rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
+              >
+                Profile
+              </button>
+
               <button
                 onClick={() => navigate(`/parent/dashboard/${parentId}`)}
                 className="w-full rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f] sm:w-auto"
@@ -473,8 +507,9 @@ const SubmitFeedback = () => {
                     Parent Feedback Form
                   </h2>
                   <p className="mt-2 text-sm leading-6 text-[#f7f1e8]/90 sm:text-base">
-                    Submit feedback for the selected child. Teacher and subject
-                    fields will auto-filter based on your selection.
+                    Submit feedback for the selected child. Teacher, subject,
+                    and feedback form fields will auto-filter based on active
+                    mappings and active forms.
                   </p>
                 </div>
               </div>
@@ -484,7 +519,7 @@ const SubmitFeedback = () => {
           <section className="rounded-3xl border border-[#d6c2a8] bg-[#fffaf3] p-4 shadow-md sm:p-6 lg:p-7">
             {dropdownLoading && (
               <div className="mb-4 rounded-2xl border border-[#eadfcf] bg-[#f8f3ea] px-4 py-3 text-sm font-medium text-[#5f5446]">
-                Loading teacher, subject, and category data...
+                Loading teacher, subject, category, and feedback form data...
               </div>
             )}
 
@@ -524,6 +559,35 @@ const SubmitFeedback = () => {
                     disabled
                     className="w-full rounded-2xl border border-[#d6c2a8] bg-[#eee6d8] px-4 py-3 text-sm text-[#5b5b5b] outline-none"
                   />
+                </div>
+
+                <div className="min-w-0">
+                  <label className="mb-2 block text-sm font-semibold text-[#1a1a1a]">
+                    Feedback Form <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="feedbackFormId"
+                    value={formData.feedbackFormId}
+                    onChange={handleChange}
+                    disabled={dropdownLoading || feedbackForms.length === 0}
+                    className="w-full rounded-2xl border border-[#d6c2a8] bg-[#f7f1e8] px-4 py-3 text-sm text-black outline-none transition focus:border-[#b08d57] focus:bg-white focus:ring-2 focus:ring-[#b08d57]/20 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    <option value="">
+                      {feedbackForms.length === 0
+                        ? "No active feedback form available"
+                        : "Select feedback form"}
+                    </option>
+                    {feedbackForms.map((form) => (
+                      <option key={form.id} value={form.id}>
+                        {form.name}
+                      </option>
+                    ))}
+                  </select>
+                  {feedbackForms.length === 1 && (
+                    <p className="mt-2 text-xs text-[#8a8175]">
+                      Only one active feedback form is available, so it is selected automatically.
+                    </p>
+                  )}
                 </div>
 
                 <div className="min-w-0">
@@ -649,7 +713,9 @@ const SubmitFeedback = () => {
               <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:flex-wrap">
                 <button
                   type="submit"
-                  disabled={loading || dropdownLoading}
+                  disabled={
+                    loading || dropdownLoading || feedbackForms.length === 0
+                  }
                   className="w-full rounded-2xl bg-[#b08d57] px-6 py-3.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f] disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
                 >
                   {loading ? "Submitting..." : "Submit Feedback"}

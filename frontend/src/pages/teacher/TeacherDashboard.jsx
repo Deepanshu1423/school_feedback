@@ -102,6 +102,20 @@ const TeacherDashboard = () => {
   const subjectWiseSummary = dashboardData?.subjectWiseSummary || [];
   const recentComments = dashboardData?.recentComments || [];
 
+  const filteredRecentComments = recentComments.filter((item) => {
+    if (!item.SubmittedAt) return false;
+
+    const submittedDate = new Date(item.SubmittedAt);
+    const now = new Date();
+    const twoDaysAgo = new Date();
+    twoDaysAgo.setDate(now.getDate() - 2);
+
+    submittedDate.setHours(0, 0, 0, 0);
+    twoDaysAgo.setHours(0, 0, 0, 0);
+
+    return submittedDate >= twoDaysAgo;
+  });
+
   const averageRating = overview?.AverageRating || 0;
   const totalFeedbacks = overview?.TotalFeedbacks || 0;
   const totalSubjects = subjectWiseSummary.length;
@@ -263,20 +277,26 @@ const TeacherDashboard = () => {
 
               <section className="rounded-3xl border border-[#d6c2a8] bg-[#fffaf3] p-5 shadow-md sm:p-6">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <h3 className="text-2xl font-bold text-[#1a1a1a]">
-                    Recent Comments
-                  </h3>
+                  <div>
+                    <h3 className="text-2xl font-bold text-[#1a1a1a]">
+                      Recent Comments
+                    </h3>
+                    <p className="mt-1 text-sm text-[#6b7280]">
+                      Last two days feedback activity for the selected child
+                    </p>
+                  </div>
                   <button
                     onClick={() => navigate(`/teacher/feedbacks/${teacherId}`)}
                     className="rounded-xl bg-[#b08d57] px-4 py-2 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
                   >
                     View All Feedbacks
                   </button>
+
                 </div>
 
                 <div className="mt-5 space-y-4">
-                  {recentComments.length > 0 ? (
-                    recentComments.map((item, index) => {
+                  {filteredRecentComments.length > 0 ? (
+                    filteredRecentComments.map((item, index) => {
                       const status =
                         item.TeacherResponse && item.TeacherResponse.trim() !== ""
                           ? "Responded"
@@ -311,15 +331,38 @@ const TeacherDashboard = () => {
                                 </div>
                               </div>
 
-                              <span
-                                className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${
-                                  status === "Responded"
+                              <div className="flex flex-row items-start gap-2 sm:items-end">
+                                <span
+                                  className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${status === "Responded"
                                     ? "bg-green-100 text-green-700"
                                     : "bg-yellow-100 text-yellow-700"
-                                }`}
-                              >
-                                {status}
-                              </span>
+                                    }`}
+                                >
+                                  {status}
+                                </span>
+
+                                {status === "Pending" && (
+                                  <button
+                                    onClick={() =>
+                                      navigate(`/teacher/respond/${teacherId}/${item.FeedbackId}?scroll=comments`)
+                                    }
+                                    className="w-fit rounded-xl bg-[#b08d57] px-4 py-2 text-sm font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
+                                  >
+                                    Respond Now
+                                  </button>
+                                )}
+
+                                {status === "Responded" && (
+                                  <button
+                                    onClick={() =>
+                                      navigate(`/teacher/respond/${teacherId}/${item.FeedbackId}?scroll=comments`)
+                                    }
+                                    className="w-fit rounded-xl bg-[#e8dcc8] px-4 py-2 text-sm font-semibold text-black shadow-sm transition hover:bg-[#d6c2a8]"
+                                  >
+                                    View Response
+                                  </button>
+                                )}
+                              </div>
                             </div>
 
                             <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">

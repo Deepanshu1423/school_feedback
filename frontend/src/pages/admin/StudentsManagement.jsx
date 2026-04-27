@@ -2,12 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "../../api/axios";
 
 const StudentsManagement = () => {
+  // =========================================
+  // Form state
+  // =========================================
   const [formData, setFormData] = useState({
     studentName: "",
     classId: "",
     rollNumber: "",
   });
 
+  // =========================================
+  // Main data states
+  // =========================================
   const [classes, setClasses] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -17,21 +23,55 @@ const StudentsManagement = () => {
   const [editingStudentId, setEditingStudentId] = useState(null);
   const [showStudentModal, setShowStudentModal] = useState(false);
 
+  // =========================================
+  // Filter states
+  // =========================================
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [classFilter, setClassFilter] = useState("all");
 
-  const [studentNameSortOrder, setStudentNameSortOrder] = useState("default");
-  const [rollNumberSortOrder, setRollNumberSortOrder] = useState("default");
-  const [classSortOrder, setClassSortOrder] = useState("default");
-  const [academicYearSortOrder, setAcademicYearSortOrder] = useState("default");
-  const [dateSortOrder, setDateSortOrder] = useState("default");
+  // =========================================
+  // Sort states
+  // =========================================
+  const [studentNameSortOrder, setStudentNameSortOrder] = useState("");
+  const [rollNumberSortOrder, setRollNumberSortOrder] = useState("");
+  const [classSortOrder, setClassSortOrder] = useState("");
+  const [academicYearSortOrder, setAcademicYearSortOrder] = useState("");
+  const [dateSortOrder, setDateSortOrder] = useState("");
 
+  // =========================================
+  // Pagination states
+  // =========================================
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  // =========================================
+  // Initial page load
+  // =========================================
   useEffect(() => {
     fetchClasses();
     fetchStudents();
   }, []);
 
+  // =========================================
+  // Reset page when filters or sorting change
+  // =========================================
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    searchTerm,
+    statusFilter,
+    classFilter,
+    studentNameSortOrder,
+    rollNumberSortOrder,
+    classSortOrder,
+    academicYearSortOrder,
+    dateSortOrder,
+  ]);
+
+  // =========================================
+  // Get auth headers for protected API calls
+  // =========================================
   const getAuthHeaders = () => {
     const token = localStorage.getItem("token");
     return {
@@ -39,6 +79,9 @@ const StudentsManagement = () => {
     };
   };
 
+  // =========================================
+  // Fetch classes for dropdown
+  // =========================================
   const fetchClasses = async () => {
     try {
       const response = await axios.get("/admin/classes", {
@@ -53,6 +96,9 @@ const StudentsManagement = () => {
     }
   };
 
+  // =========================================
+  // Fetch students list
+  // =========================================
   const fetchStudents = async () => {
     try {
       setTableLoading(true);
@@ -72,31 +118,106 @@ const StudentsManagement = () => {
     }
   };
 
+  // =========================================
+  // Reset all sorting states
+  // =========================================
   const resetAllSorts = () => {
-    setStudentNameSortOrder("default");
-    setRollNumberSortOrder("default");
-    setClassSortOrder("default");
-    setAcademicYearSortOrder("default");
-    setDateSortOrder("default");
+    setStudentNameSortOrder("");
+    setRollNumberSortOrder("");
+    setClassSortOrder("");
+    setAcademicYearSortOrder("");
+    setDateSortOrder("");
   };
 
-  const setOnlyActiveSort = (sortType, value) => {
-    resetAllSorts();
+  // =========================================
+  // Toggle sorting per column
+  // =========================================
+  const toggleSort = (sortType) => {
+    if (sortType === "studentName") {
+      const next =
+        studentNameSortOrder === ""
+          ? "asc"
+          : studentNameSortOrder === "asc"
+          ? "desc"
+          : "";
+      resetAllSorts();
+      setStudentNameSortOrder(next);
+    }
 
-    if (sortType === "studentName") setStudentNameSortOrder(value);
-    if (sortType === "rollNumber") setRollNumberSortOrder(value);
-    if (sortType === "class") setClassSortOrder(value);
-    if (sortType === "academicYear") setAcademicYearSortOrder(value);
-    if (sortType === "date") setDateSortOrder(value);
+    if (sortType === "rollNumber") {
+      const next =
+        rollNumberSortOrder === ""
+          ? "asc"
+          : rollNumberSortOrder === "asc"
+          ? "desc"
+          : "";
+      resetAllSorts();
+      setRollNumberSortOrder(next);
+    }
+
+    if (sortType === "class") {
+      const next =
+        classSortOrder === ""
+          ? "asc"
+          : classSortOrder === "asc"
+          ? "desc"
+          : "";
+      resetAllSorts();
+      setClassSortOrder(next);
+    }
+
+    if (sortType === "academicYear") {
+      const next =
+        academicYearSortOrder === ""
+          ? "asc"
+          : academicYearSortOrder === "asc"
+          ? "desc"
+          : "";
+      resetAllSorts();
+      setAcademicYearSortOrder(next);
+    }
+
+    if (sortType === "date") {
+      const next =
+        dateSortOrder === ""
+          ? "latest"
+          : dateSortOrder === "latest"
+          ? "oldest"
+          : "";
+      resetAllSorts();
+      setDateSortOrder(next);
+    }
   };
 
+  // =========================================
+  // Show sorting arrows
+  // =========================================
+  const getSortIndicator = (sortValue, type = "default") => {
+    if (type === "date") {
+      if (sortValue === "latest") return " ↓";
+      if (sortValue === "oldest") return " ↑";
+      return "";
+    }
+
+    if (sortValue === "asc") return " ↑";
+    if (sortValue === "desc") return " ↓";
+    return "";
+  };
+
+  // =========================================
+  // Clear filters and reset page
+  // =========================================
   const handleClearFilters = () => {
     setSearchTerm("");
     setStatusFilter("all");
     setClassFilter("all");
     resetAllSorts();
+    setCurrentPage(1);
   };
 
+  // =========================================
+  // Handle form input changes
+  // =========================================
   const handleChange = (e) => {
     setFormData((prev) => ({
       ...prev,
@@ -104,6 +225,9 @@ const StudentsManagement = () => {
     }));
   };
 
+  // =========================================
+  // Reset form state
+  // =========================================
   const resetForm = () => {
     setFormData({
       studentName: "",
@@ -115,6 +239,9 @@ const StudentsManagement = () => {
     setError("");
   };
 
+  // =========================================
+  // Open / close modal
+  // =========================================
   const openCreateModal = () => {
     resetForm();
     setShowStudentModal(true);
@@ -125,6 +252,9 @@ const StudentsManagement = () => {
     setShowStudentModal(false);
   };
 
+  // =========================================
+  // Open edit modal and prefill form
+  // =========================================
   const handleEdit = (student) => {
     setMessage("");
     setError("");
@@ -137,6 +267,9 @@ const StudentsManagement = () => {
     setShowStudentModal(true);
   };
 
+  // =========================================
+  // Create or update student
+  // =========================================
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -187,7 +320,18 @@ const StudentsManagement = () => {
     }
   };
 
+  // =========================================
+  // Activate / Deactivate student with confirm popup
+  // =========================================
   const handleStudentStatusChange = async (studentId, newStatus) => {
+    const actionText = newStatus === 1 ? "activate" : "deactivate";
+
+    const confirmAction = window.confirm(
+      `Are you sure you want to ${actionText} this student?`
+    );
+
+    if (!confirmAction) return;
+
     try {
       setMessage("");
       setError("");
@@ -201,6 +345,10 @@ const StudentsManagement = () => {
       );
 
       if (response.data.success) {
+        setMessage(
+          response.data.message ||
+            `Student ${newStatus === 1 ? "activated" : "deactivated"} successfully`
+        );
         fetchStudents();
       }
     } catch (err) {
@@ -208,6 +356,9 @@ const StudentsManagement = () => {
     }
   };
 
+  // =========================================
+  // Delete student with confirm popup
+  // =========================================
   const handleDeleteStudent = async (studentId) => {
     const confirmed = window.confirm(
       "Are you sure you want to delete this student?"
@@ -235,6 +386,9 @@ const StudentsManagement = () => {
     }
   };
 
+  // =========================================
+  // Format created date
+  // =========================================
   const formatDate = (dateValue) => {
     if (!dateValue) return "-";
     const date = new Date(dateValue);
@@ -246,6 +400,9 @@ const StudentsManagement = () => {
     });
   };
 
+  // =========================================
+  // Format created time
+  // =========================================
   const formatTime = (dateValue) => {
     if (!dateValue) return "-";
     const date = new Date(dateValue);
@@ -259,6 +416,9 @@ const StudentsManagement = () => {
       .toLowerCase();
   };
 
+  // =========================================
+  // Show Today / Yesterday chip
+  // =========================================
   const getDayLabel = (dateValue) => {
     if (!dateValue) return "";
 
@@ -278,6 +438,9 @@ const StudentsManagement = () => {
     return "";
   };
 
+  // =========================================
+  // Helpers for numeric/text sorting
+  // =========================================
   const getClassSortValue = (student) => {
     const raw = student.ClassName ?? "";
     const num = Number(raw);
@@ -298,6 +461,9 @@ const StudentsManagement = () => {
     return Number.isNaN(num) ? Number.MAX_SAFE_INTEGER : num;
   };
 
+  // =========================================
+  // Filter and sort students
+  // =========================================
   const filteredStudents = useMemo(() => {
     let result = students.filter((student) => {
       const matchesSearch =
@@ -391,6 +557,9 @@ const StudentsManagement = () => {
     dateSortOrder,
   ]);
 
+  // =========================================
+  // Summary counts
+  // =========================================
   const activeStudentsCount = useMemo(() => {
     return students.filter(
       (student) => student.IsActive === 1 || student.IsActive === true
@@ -399,6 +568,75 @@ const StudentsManagement = () => {
 
   const inactiveStudentsCount = students.length - activeStudentsCount;
 
+  // =========================================
+  // Pagination calculations
+  // =========================================
+  const totalPages = Math.ceil(filteredStudents.length / ITEMS_PER_PAGE);
+
+  const paginatedStudents = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredStudents.slice(startIndex, endIndex);
+  }, [filteredStudents, currentPage]);
+
+  // =========================================
+  // Pagination actions
+  // =========================================
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
+
+  const goToPage = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // =========================================
+  // Build visible page numbers like:
+  // << < 1 2 3 ... 10 > >>
+  // =========================================
+  const getVisiblePages = () => {
+    const pages = [];
+
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+      return pages;
+    }
+
+    pages.push(1);
+
+    if (currentPage > 3) {
+      pages.push("...");
+    }
+
+    const startPage = Math.max(2, currentPage - 1);
+    const endPage = Math.min(totalPages - 1, currentPage + 1);
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    if (currentPage < totalPages - 2) {
+      pages.push("...");
+    }
+
+    pages.push(totalPages);
+
+    return pages;
+  };
+
+  // =========================================
+  // Mobile / tablet student card
+  // =========================================
   const StudentCard = ({ student }) => (
     <div className="rounded-2xl border border-[#e7d5b7] bg-white p-4 shadow-sm space-y-4">
       <div className="grid grid-cols-2 gap-3 text-sm">
@@ -502,6 +740,9 @@ const StudentsManagement = () => {
   return (
     <>
       <div className="space-y-5 sm:space-y-6">
+        {/* =========================================
+            Summary cards
+           ========================================= */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
           <div className="rounded-[20px] sm:rounded-[24px] border border-[#d8c3a0] bg-white px-4 sm:px-6 py-4 sm:py-5 shadow-sm">
             <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-[#9b7440]">
@@ -540,12 +781,16 @@ const StudentsManagement = () => {
           </div>
         </div>
 
+        {/* Top error message */}
         {error && !showStudentModal && (
           <div className="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
 
+        {/* =========================================
+            Main students list section
+           ========================================= */}
         <div className="rounded-[22px] sm:rounded-[28px] border border-[#d8c3a0] bg-white shadow-lg overflow-hidden">
           <div className="bg-[#f1e7d7] px-4 sm:px-6 py-4 sm:py-5 border-b border-[#dcc7a6] space-y-4">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -609,287 +854,371 @@ const StudentsManagement = () => {
             </div>
           </div>
 
+          {/* =========================================
+              Mobile / tablet view
+             ========================================= */}
           <div className="block 2xl:hidden p-4 space-y-4 bg-[#fcfaf6]">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <select
-                value={studentNameSortOrder}
-                onChange={(e) => setOnlyActiveSort("studentName", e.target.value)}
-                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+              <button
+                onClick={() => toggleSort("studentName")}
+                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
               >
-                <option value="default">Name</option>
-                <option value="asc">Name A-Z</option>
-                <option value="desc">Name Z-A</option>
-              </select>
+                Name{getSortIndicator(studentNameSortOrder)}
+              </button>
 
-              <select
-                value={rollNumberSortOrder}
-                onChange={(e) => setOnlyActiveSort("rollNumber", e.target.value)}
-                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+              <button
+                onClick={() => toggleSort("rollNumber")}
+                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
               >
-                <option value="default">Roll No</option>
-                <option value="asc">Roll Low-High</option>
-                <option value="desc">Roll High-Low</option>
-              </select>
+                Roll No{getSortIndicator(rollNumberSortOrder)}
+              </button>
 
-              <select
-                value={classSortOrder}
-                onChange={(e) => setOnlyActiveSort("class", e.target.value)}
-                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+              <button
+                onClick={() => toggleSort("class")}
+                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
               >
-                <option value="default">Class</option>
-                <option value="asc">Class Low-High</option>
-                <option value="desc">Class High-Low</option>
-              </select>
+                Class{getSortIndicator(classSortOrder)}
+              </button>
 
-              <select
-                value={academicYearSortOrder}
-                onChange={(e) => setOnlyActiveSort("academicYear", e.target.value)}
-                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+              <button
+                onClick={() => toggleSort("academicYear")}
+                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
               >
-                <option value="default">Year</option>
-                <option value="asc">Year Old-New</option>
-                <option value="desc">Year New-Old</option>
-              </select>
+                Year{getSortIndicator(academicYearSortOrder)}
+              </button>
 
-              <select
-                value={dateSortOrder}
-                onChange={(e) => setOnlyActiveSort("date", e.target.value)}
-                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+              <button
+                onClick={() => toggleSort("date")}
+                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
               >
-                <option value="default">Date</option>
-                <option value="latest">Latest</option>
-                <option value="oldest">Oldest</option>
-              </select>
+                Date{getSortIndicator(dateSortOrder, "date")}
+              </button>
             </div>
 
             {tableLoading ? (
               <div className="p-6 text-center text-gray-600">Loading students...</div>
-            ) : filteredStudents.length === 0 ? (
+            ) : paginatedStudents.length === 0 ? (
               <div className="p-6 text-center text-gray-600">No students found</div>
             ) : (
-              filteredStudents.map((student) => (
+              paginatedStudents.map((student) => (
                 <StudentCard key={student.StudentId} student={student} />
               ))
             )}
+
+            {/* Mobile pagination */}
+            {filteredStudents.length > 0 && totalPages > 1 && (
+              <div className="rounded-2xl border border-[#d6c2a8] bg-white p-4 shadow-sm">
+                <p className="mb-4 text-center text-sm text-[#6b7280]">
+                  Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                  {Math.min(currentPage * ITEMS_PER_PAGE, filteredStudents.length)} of{" "}
+                  {filteredStudents.length} students
+                </p>
+
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    onClick={() => goToPage(1)}
+                    disabled={currentPage === 1}
+                    className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ≪
+                  </button>
+
+                  <button
+                    onClick={goToPreviousPage}
+                    disabled={currentPage === 1}
+                    className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ‹
+                  </button>
+
+                  {getVisiblePages().map((page, index) =>
+                    page === "..." ? (
+                      <span
+                        key={`ellipsis-mobile-${index}`}
+                        className="flex h-11 min-w-[44px] items-center justify-center rounded-2xl px-2 text-base font-semibold text-[#6b7280]"
+                      >
+                        ...
+                      </span>
+                    ) : (
+                      <button
+                        key={`mobile-${page}`}
+                        onClick={() => goToPage(page)}
+                        className={`h-11 min-w-[44px] rounded-2xl px-3 text-base font-semibold transition ${
+                          currentPage === page
+                            ? "bg-blue-500 text-white shadow-md"
+                            : "border border-[#d6c2a8] bg-white text-[#1a1a1a] hover:bg-[#efe4d2]"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  )}
+
+                  <button
+                    onClick={goToNextPage}
+                    disabled={currentPage === totalPages}
+                    className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ›
+                  </button>
+
+                  <button
+                    onClick={() => goToPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ≫
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
+          {/* =========================================
+              Desktop table view
+             ========================================= */}
           <div className="hidden 2xl:block overflow-x-auto">
             {tableLoading ? (
               <div className="p-8 text-center text-gray-600">
                 Loading students...
               </div>
-            ) : filteredStudents.length === 0 ? (
+            ) : paginatedStudents.length === 0 ? (
               <div className="p-8 text-center text-gray-600">
                 No students found
               </div>
             ) : (
-              <table className="min-w-[1180px] w-full">
-                <thead className="bg-[#fbf7f0]">
-                  <tr>
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Student Name</span>
-                        <select
-                          value={studentNameSortOrder}
-                          onChange={(e) =>
-                            setOnlyActiveSort("studentName", e.target.value)
-                          }
-                          className="w-[64px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px] text-black outline-none"
-                        >
-                          <option value="default">Def</option>
-                          <option value="asc">A-Z</option>
-                          <option value="desc">Z-A</option>
-                        </select>
-                      </div>
-                    </th>
-
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Roll Number</span>
-                        <select
-                          value={rollNumberSortOrder}
-                          onChange={(e) =>
-                            setOnlyActiveSort("rollNumber", e.target.value)
-                          }
-                          className="w-[78px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px] text-black outline-none"
-                        >
-                          <option value="default">Def</option>
-                          <option value="asc">Low-Hi</option>
-                          <option value="desc">High-Lo</option>
-                        </select>
-                      </div>
-                    </th>
-
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Class</span>
-                        <select
-                          value={classSortOrder}
-                          onChange={(e) =>
-                            setOnlyActiveSort("class", e.target.value)
-                          }
-                          className="w-[78px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px] text-black outline-none"
-                        >
-                          <option value="default">Def</option>
-                          <option value="asc">Low-Hi</option>
-                          <option value="desc">High-Lo</option>
-                        </select>
-                      </div>
-                    </th>
-
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black">
-                      Section
-                    </th>
-
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Academic Year</span>
-                        <select
-                          value={academicYearSortOrder}
-                          onChange={(e) =>
-                            setOnlyActiveSort("academicYear", e.target.value)
-                          }
-                          className="w-[78px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px] text-black outline-none"
-                        >
-                          <option value="default">Def</option>
-                          <option value="asc">Old-New</option>
-                          <option value="desc">New-Old</option>
-                        </select>
-                      </div>
-                    </th>
-
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black">
-                      Status
-                    </th>
-
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Created At</span>
-                        <select
-                          value={dateSortOrder}
-                          onChange={(e) => setOnlyActiveSort("date", e.target.value)}
-                          className="w-[64px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px] text-black outline-none"
-                        >
-                          <option value="default">Def</option>
-                          <option value="latest">Latest</option>
-                          <option value="oldest">Oldest</option>
-                        </select>
-                      </div>
-                    </th>
-
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {filteredStudents.map((student) => (
-                    <tr
-                      key={student.StudentId}
-                      className="border-t border-[#eee2cf] hover:bg-[#fcfaf6]"
-                    >
-                      <td
-                        className="px-3 py-4 text-black font-medium max-w-[120px] truncate"
-                        title={student.StudentName}
+              <>
+                <table className="min-w-[1180px] w-full">
+                  <thead className="bg-[#fbf7f0]">
+                    <tr>
+                      <th
+                        onClick={() => toggleSort("studentName")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
                       >
-                        {student.StudentName}
-                      </td>
+                        Student Name{getSortIndicator(studentNameSortOrder)}
+                      </th>
 
-                      <td className="px-3 py-4 text-gray-700 whitespace-nowrap">
-                        {student.RollNumber || "-"}
-                      </td>
+                      <th
+                        onClick={() => toggleSort("rollNumber")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Roll Number{getSortIndicator(rollNumberSortOrder)}
+                      </th>
 
-                      <td className="px-3 py-4 text-gray-700 whitespace-nowrap">
-                        {student.ClassName}
-                      </td>
+                      <th
+                        onClick={() => toggleSort("class")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Class{getSortIndicator(classSortOrder)}
+                      </th>
 
-                      <td className="px-3 py-4 text-gray-700 whitespace-nowrap">
-                        {student.Section}
-                      </td>
+                      <th className="text-left px-3 py-3 text-sm font-bold text-black">
+                        Section
+                      </th>
 
-                      <td className="px-3 py-4 text-gray-700 whitespace-nowrap">
-                        {student.AcademicYear}
-                      </td>
+                      <th
+                        onClick={() => toggleSort("academicYear")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Academic Year{getSortIndicator(academicYearSortOrder)}
+                      </th>
 
-                      <td className="px-3 py-4">
-                        <span
-                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${
-                            student.IsActive
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
+                      <th className="text-left px-3 py-3 text-sm font-bold text-black">
+                        Status
+                      </th>
+
+                      <th
+                        onClick={() => toggleSort("date")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Created At{getSortIndicator(dateSortOrder, "date")}
+                      </th>
+
+                      <th className="text-left px-3 py-3 text-sm font-bold text-black">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {paginatedStudents.map((student) => (
+                      <tr
+                        key={student.StudentId}
+                        className="border-t border-[#eee2cf] hover:bg-[#fcfaf6]"
+                      >
+                        <td
+                          className="px-3 py-4 text-black font-medium max-w-[120px] truncate"
+                          title={student.StudentName}
                         >
-                          {student.IsActive ? "Active" : "Inactive"}
-                        </span>
-                      </td>
+                          {student.StudentName}
+                        </td>
 
-                      <td className="px-3 py-4">
-                        {student.CreatedAt ? (
-                          <div className="min-w-[165px] rounded-2xl border border-[#e3d3bb] bg-white px-3 py-3 shadow-sm">
-                            <div className="flex items-center gap-2 text-black font-semibold text-sm">
-                              <span>📅</span>
-                              <span>{formatDate(student.CreatedAt)}</span>
-                            </div>
+                        <td className="px-3 py-4 text-gray-700 whitespace-nowrap">
+                          {student.RollNumber || "-"}
+                        </td>
 
-                            <div className="mt-2 flex items-center gap-2 text-gray-600 text-xs flex-wrap">
-                              <span>🕒</span>
-                              <span>{formatTime(student.CreatedAt)}</span>
+                        <td className="px-3 py-4 text-gray-700 whitespace-nowrap">
+                          {student.ClassName}
+                        </td>
 
-                              {getDayLabel(student.CreatedAt) && (
-                                <span className="rounded-full bg-[#eee4d6] px-2 py-1 text-[10px] font-semibold text-[#9b7440]">
-                                  {getDayLabel(student.CreatedAt)}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
+                        <td className="px-3 py-4 text-gray-700 whitespace-nowrap">
+                          {student.Section}
+                        </td>
 
-                      <td className="px-3 py-4">
-                        <div className="flex flex-col gap-2 w-[92px]">
-                          <button
-                            onClick={() => handleEdit(student)}
-                            className="rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1.5 text-xs font-semibold"
-                          >
-                            Edit
-                          </button>
+                        <td className="px-3 py-4 text-gray-700 whitespace-nowrap">
+                          {student.AcademicYear}
+                        </td>
 
-                          <button
-                            onClick={() =>
-                              handleStudentStatusChange(
-                                student.StudentId,
-                                student.IsActive ? 0 : 1
-                              )
-                            }
-                            className={`rounded-xl px-3 py-1.5 text-xs font-semibold ${
+                        <td className="px-3 py-4">
+                          <span
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${
                               student.IsActive
-                                ? "bg-red-100 text-red-700 hover:bg-red-200"
-                                : "bg-green-100 text-green-700 hover:bg-green-200"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
                             }`}
                           >
-                            {student.IsActive ? "Deactivate" : "Activate"}
-                          </button>
+                            {student.IsActive ? "Active" : "Inactive"}
+                          </span>
+                        </td>
 
-                          <button
-                            onClick={() => handleDeleteStudent(student.StudentId)}
-                            className="rounded-xl bg-gray-900 text-white hover:bg-black px-3 py-1.5 text-xs font-semibold"
+                        <td className="px-3 py-4">
+                          {student.CreatedAt ? (
+                            <div className="min-w-[165px] rounded-2xl border border-[#e3d3bb] bg-white px-3 py-3 shadow-sm">
+                              <div className="flex items-center gap-2 text-black font-semibold text-sm">
+                                <span>📅</span>
+                                <span>{formatDate(student.CreatedAt)}</span>
+                              </div>
+
+                              <div className="mt-2 flex items-center gap-2 text-gray-600 text-xs flex-wrap">
+                                <span>🕒</span>
+                                <span>{formatTime(student.CreatedAt)}</span>
+
+                                {getDayLabel(student.CreatedAt) && (
+                                  <span className="rounded-full bg-[#eee4d6] px-2 py-1 text-[10px] font-semibold text-[#9b7440]">
+                                    {getDayLabel(student.CreatedAt)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+
+                        <td className="px-3 py-4">
+                          <div className="flex flex-col gap-2 w-[92px]">
+                            <button
+                              onClick={() => handleEdit(student)}
+                              className="rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1.5 text-xs font-semibold"
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                handleStudentStatusChange(
+                                  student.StudentId,
+                                  student.IsActive ? 0 : 1
+                                )
+                              }
+                              className={`rounded-xl px-3 py-1.5 text-xs font-semibold ${
+                                student.IsActive
+                                  ? "bg-red-100 text-red-700 hover:bg-red-200"
+                                  : "bg-green-100 text-green-700 hover:bg-green-200"
+                              }`}
+                            >
+                              {student.IsActive ? "Deactivate" : "Activate"}
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteStudent(student.StudentId)}
+                              className="rounded-xl bg-gray-900 text-white hover:bg-black px-3 py-1.5 text-xs font-semibold"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Pagination inside same section */}
+                {filteredStudents.length > 0 && totalPages > 1 && (
+                  <div className="mt-6 flex flex-col items-center gap-4 border-t border-[#eadcc8] bg-white px-4 py-6">
+                    <p className="text-sm text-[#6b7280] text-center">
+                      Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                      {Math.min(currentPage * ITEMS_PER_PAGE, filteredStudents.length)} of{" "}
+                      {filteredStudents.length} students
+                    </p>
+
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <button
+                        onClick={() => goToPage(1)}
+                        disabled={currentPage === 1}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ≪
+                      </button>
+
+                      <button
+                        onClick={goToPreviousPage}
+                        disabled={currentPage === 1}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ‹
+                      </button>
+
+                      {getVisiblePages().map((page, index) =>
+                        page === "..." ? (
+                          <span
+                            key={`ellipsis-${index}`}
+                            className="flex h-12 min-w-[48px] items-center justify-center rounded-2xl px-3 text-lg font-semibold text-[#6b7280]"
                           >
-                            Delete
+                            ...
+                          </span>
+                        ) : (
+                          <button
+                            key={page}
+                            onClick={() => goToPage(page)}
+                            className={`h-12 min-w-[48px] rounded-2xl px-4 text-lg font-semibold transition ${
+                              currentPage === page
+                                ? "bg-blue-500 text-white shadow-md"
+                                : "border border-[#d6c2a8] bg-white text-[#1a1a1a] hover:bg-[#efe4d2]"
+                            }`}
+                          >
+                            {page}
                           </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        )
+                      )}
+
+                      <button
+                        onClick={goToNextPage}
+                        disabled={currentPage === totalPages}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ›
+                      </button>
+
+                      <button
+                        onClick={() => goToPage(totalPages)}
+                        disabled={currentPage === totalPages}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ≫
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
       </div>
 
+      {/* =========================================
+          Create / Edit student modal
+         ========================================= */}
       {showStudentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-3 sm:px-4 py-4">
           <div className="relative w-full max-w-[680px] max-h-[90vh] overflow-y-auto rounded-[24px] sm:rounded-[30px] border border-[#d8c3a0] bg-white shadow-2xl">

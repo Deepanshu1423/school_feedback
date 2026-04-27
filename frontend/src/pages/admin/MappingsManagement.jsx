@@ -1,5 +1,48 @@
 import { useEffect, useMemo, useState } from "react";
+import Select from "react-select";
 import axios from "../../api/axios";
+
+const searchableSelectStyles = {
+  control: (base, state) => ({
+    ...base,
+    minHeight: "56px",
+    borderRadius: "24px",
+    borderColor: state.isFocused ? "#b79257" : "#b9c7da",
+    boxShadow: state.isFocused ? "0 0 0 2px rgba(183, 146, 87, 0.2)" : "none",
+    backgroundColor: "#dfe7f5",
+    "&:hover": {
+      borderColor: "#b79257",
+    },
+  }),
+  valueContainer: (base) => ({
+    ...base,
+    padding: "0 16px",
+  }),
+  input: (base) => ({
+    ...base,
+    color: "#111827",
+  }),
+  placeholder: (base) => ({
+    ...base,
+    color: "#6b7280",
+  }),
+  singleValue: (base) => ({
+    ...base,
+    color: "#111827",
+  }),
+  menu: (base) => ({
+    ...base,
+    borderRadius: "18px",
+    overflow: "hidden",
+    zIndex: 9999,
+  }),
+  option: (base, state) => ({
+    ...base,
+    backgroundColor: state.isFocused ? "#f3eadb" : "white",
+    color: "#111827",
+    cursor: "pointer",
+  }),
+};
 
 const MappingsManagement = () => {
   const [teacherClassSubjectForm, setTeacherClassSubjectForm] = useState({
@@ -34,30 +77,56 @@ const MappingsManagement = () => {
 
   const [teacherMappingMessage, setTeacherMappingMessage] = useState("");
   const [teacherMappingError, setTeacherMappingError] = useState("");
-
   const [parentMappingMessage, setParentMappingMessage] = useState("");
   const [parentMappingError, setParentMappingError] = useState("");
 
   const [teacherSearch, setTeacherSearch] = useState("");
   const [parentSearch, setParentSearch] = useState("");
 
-  const [teacherNameSort, setTeacherNameSort] = useState("default");
-  const [teacherCodeSort, setTeacherCodeSort] = useState("default");
-  const [teacherClassSort, setTeacherClassSort] = useState("default");
-  const [teacherYearSort, setTeacherYearSort] = useState("default");
-  const [teacherSubjectSort, setTeacherSubjectSort] = useState("default");
+  const [teacherNameSort, setTeacherNameSort] = useState("");
+  const [teacherCodeSort, setTeacherCodeSort] = useState("");
+  const [teacherClassSort, setTeacherClassSort] = useState("");
+  const [teacherYearSort, setTeacherYearSort] = useState("");
+  const [teacherSubjectSort, setTeacherSubjectSort] = useState("");
 
-  const [parentNameSort, setParentNameSort] = useState("default");
-  const [parentCodeSort, setParentCodeSort] = useState("default");
-  const [studentNameSort, setStudentNameSort] = useState("default");
-  const [rollNumberSort, setRollNumberSort] = useState("default");
-  const [parentClassSort, setParentClassSort] = useState("default");
-  const [parentYearSort, setParentYearSort] = useState("default");
+  const [parentNameSort, setParentNameSort] = useState("");
+  const [parentCodeSort, setParentCodeSort] = useState("");
+  const [studentNameSort, setStudentNameSort] = useState("");
+  const [rollNumberSort, setRollNumberSort] = useState("");
+  const [parentClassSort, setParentClassSort] = useState("");
+  const [parentYearSort, setParentYearSort] = useState("");
+
+  const [teacherCurrentPage, setTeacherCurrentPage] = useState(1);
+  const [parentCurrentPage, setParentCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
     fetchDropdownData();
     fetchMappings();
   }, []);
+
+  useEffect(() => {
+    setTeacherCurrentPage(1);
+  }, [
+    teacherSearch,
+    teacherNameSort,
+    teacherCodeSort,
+    teacherClassSort,
+    teacherYearSort,
+    teacherSubjectSort,
+  ]);
+
+  useEffect(() => {
+    setParentCurrentPage(1);
+  }, [
+    parentSearch,
+    parentNameSort,
+    parentCodeSort,
+    studentNameSort,
+    rollNumberSort,
+    parentClassSort,
+    parentYearSort,
+  ]);
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem("token");
@@ -70,7 +139,7 @@ const MappingsManagement = () => {
     try {
       const [teachersRes, classesRes, subjectsRes, parentsRes, studentsRes] =
         await Promise.all([
-          axios.get("/admin/teachers", { headers: getAuthHeaders() }),
+          axios.get("/admin/active-teachers", { headers: getAuthHeaders() }),
           axios.get("/admin/classes", { headers: getAuthHeaders() }),
           axios.get("/admin/subjects", { headers: getAuthHeaders() }),
           axios.get("/admin/parents", { headers: getAuthHeaders() }),
@@ -125,6 +194,20 @@ const MappingsManagement = () => {
     setParentStudentForm((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
+    }));
+  };
+
+  const handleTeacherMappingSelectChange = (fieldName, selectedOption) => {
+    setTeacherClassSubjectForm((prev) => ({
+      ...prev,
+      [fieldName]: selectedOption ? selectedOption.value : "",
+    }));
+  };
+
+  const handleParentMappingSelectChange = (fieldName, selectedOption) => {
+    setParentStudentForm((prev) => ({
+      ...prev,
+      [fieldName]: selectedOption ? selectedOption.value : "",
     }));
   };
 
@@ -321,7 +404,9 @@ const MappingsManagement = () => {
           response.data.message ||
             "Teacher-Class-Subject mapping deleted successfully"
         );
-        if (editingTeacherMappingId === mappingId) resetTeacherClassSubjectForm();
+        if (editingTeacherMappingId === mappingId) {
+          resetTeacherClassSubjectForm();
+        }
         fetchMappings();
       }
     } catch (err) {
@@ -351,7 +436,9 @@ const MappingsManagement = () => {
         setParentMappingMessage(
           response.data.message || "Parent-Student mapping deleted successfully"
         );
-        if (editingParentMappingId === mappingId) resetParentStudentForm();
+        if (editingParentMappingId === mappingId) {
+          resetParentStudentForm();
+        }
         fetchMappings();
       }
     } catch (err) {
@@ -363,49 +450,119 @@ const MappingsManagement = () => {
   };
 
   const resetTeacherSorts = () => {
-    setTeacherNameSort("default");
-    setTeacherCodeSort("default");
-    setTeacherClassSort("default");
-    setTeacherYearSort("default");
-    setTeacherSubjectSort("default");
-  };
-
-  const setOnlyTeacherSort = (type, value) => {
-    resetTeacherSorts();
-    if (type === "teacherName") setTeacherNameSort(value);
-    if (type === "teacherCode") setTeacherCodeSort(value);
-    if (type === "teacherClass") setTeacherClassSort(value);
-    if (type === "teacherYear") setTeacherYearSort(value);
-    if (type === "teacherSubject") setTeacherSubjectSort(value);
+    setTeacherNameSort("");
+    setTeacherCodeSort("");
+    setTeacherClassSort("");
+    setTeacherYearSort("");
+    setTeacherSubjectSort("");
   };
 
   const resetParentSorts = () => {
-    setParentNameSort("default");
-    setParentCodeSort("default");
-    setStudentNameSort("default");
-    setRollNumberSort("default");
-    setParentClassSort("default");
-    setParentYearSort("default");
+    setParentNameSort("");
+    setParentCodeSort("");
+    setStudentNameSort("");
+    setRollNumberSort("");
+    setParentClassSort("");
+    setParentYearSort("");
   };
 
-  const setOnlyParentSort = (type, value) => {
-    resetParentSorts();
-    if (type === "parentName") setParentNameSort(value);
-    if (type === "parentCode") setParentCodeSort(value);
-    if (type === "studentName") setStudentNameSort(value);
-    if (type === "rollNumber") setRollNumberSort(value);
-    if (type === "parentClass") setParentClassSort(value);
-    if (type === "parentYear") setParentYearSort(value);
+  const toggleTeacherSort = (type) => {
+    if (type === "teacherName") {
+      const next =
+        teacherNameSort === "" ? "asc" : teacherNameSort === "asc" ? "desc" : "";
+      resetTeacherSorts();
+      setTeacherNameSort(next);
+    }
+
+    if (type === "teacherCode") {
+      const next =
+        teacherCodeSort === "" ? "asc" : teacherCodeSort === "asc" ? "desc" : "";
+      resetTeacherSorts();
+      setTeacherCodeSort(next);
+    }
+
+    if (type === "teacherClass") {
+      const next =
+        teacherClassSort === "" ? "asc" : teacherClassSort === "asc" ? "desc" : "";
+      resetTeacherSorts();
+      setTeacherClassSort(next);
+    }
+
+    if (type === "teacherYear") {
+      const next =
+        teacherYearSort === "" ? "asc" : teacherYearSort === "asc" ? "desc" : "";
+      resetTeacherSorts();
+      setTeacherYearSort(next);
+    }
+
+    if (type === "teacherSubject") {
+      const next =
+        teacherSubjectSort === "" ? "asc" : teacherSubjectSort === "asc" ? "desc" : "";
+      resetTeacherSorts();
+      setTeacherSubjectSort(next);
+    }
+  };
+
+  const toggleParentSort = (type) => {
+    if (type === "parentName") {
+      const next =
+        parentNameSort === "" ? "asc" : parentNameSort === "asc" ? "desc" : "";
+      resetParentSorts();
+      setParentNameSort(next);
+    }
+
+    if (type === "parentCode") {
+      const next =
+        parentCodeSort === "" ? "asc" : parentCodeSort === "asc" ? "desc" : "";
+      resetParentSorts();
+      setParentCodeSort(next);
+    }
+
+    if (type === "studentName") {
+      const next =
+        studentNameSort === "" ? "asc" : studentNameSort === "asc" ? "desc" : "";
+      resetParentSorts();
+      setStudentNameSort(next);
+    }
+
+    if (type === "rollNumber") {
+      const next =
+        rollNumberSort === "" ? "asc" : rollNumberSort === "asc" ? "desc" : "";
+      resetParentSorts();
+      setRollNumberSort(next);
+    }
+
+    if (type === "parentClass") {
+      const next =
+        parentClassSort === "" ? "asc" : parentClassSort === "asc" ? "desc" : "";
+      resetParentSorts();
+      setParentClassSort(next);
+    }
+
+    if (type === "parentYear") {
+      const next =
+        parentYearSort === "" ? "asc" : parentYearSort === "asc" ? "desc" : "";
+      resetParentSorts();
+      setParentYearSort(next);
+    }
+  };
+
+  const getSortIndicator = (sortValue) => {
+    if (sortValue === "asc") return " ↑";
+    if (sortValue === "desc") return " ↓";
+    return "";
   };
 
   const handleClearTeacherFilters = () => {
     setTeacherSearch("");
     resetTeacherSorts();
+    setTeacherCurrentPage(1);
   };
 
   const handleClearParentFilters = () => {
     setParentSearch("");
     resetParentSorts();
+    setParentCurrentPage(1);
   };
 
   const getClassSortValue = (item) => {
@@ -450,17 +607,19 @@ const MappingsManagement = () => {
       );
     } else if (teacherCodeSort === "asc") {
       result = [...result].sort((a, b) =>
-        String(a.TeacherCode || "").localeCompare(String(b.TeacherCode || ""), undefined, {
-          numeric: true,
-          sensitivity: "base",
-        })
+        String(a.TeacherCode || "").localeCompare(
+          String(b.TeacherCode || ""),
+          undefined,
+          { numeric: true, sensitivity: "base" }
+        )
       );
     } else if (teacherCodeSort === "desc") {
       result = [...result].sort((a, b) =>
-        String(b.TeacherCode || "").localeCompare(String(a.TeacherCode || ""), undefined, {
-          numeric: true,
-          sensitivity: "base",
-        })
+        String(b.TeacherCode || "").localeCompare(
+          String(a.TeacherCode || ""),
+          undefined,
+          { numeric: true, sensitivity: "base" }
+        )
       );
     } else if (teacherClassSort === "asc") {
       result = [...result].sort((a, b) => {
@@ -531,17 +690,19 @@ const MappingsManagement = () => {
       );
     } else if (parentCodeSort === "asc") {
       result = [...result].sort((a, b) =>
-        String(a.ParentCode || "").localeCompare(String(b.ParentCode || ""), undefined, {
-          numeric: true,
-          sensitivity: "base",
-        })
+        String(a.ParentCode || "").localeCompare(
+          String(b.ParentCode || ""),
+          undefined,
+          { numeric: true, sensitivity: "base" }
+        )
       );
     } else if (parentCodeSort === "desc") {
       result = [...result].sort((a, b) =>
-        String(b.ParentCode || "").localeCompare(String(a.ParentCode || ""), undefined, {
-          numeric: true,
-          sensitivity: "base",
-        })
+        String(b.ParentCode || "").localeCompare(
+          String(a.ParentCode || ""),
+          undefined,
+          { numeric: true, sensitivity: "base" }
+        )
       );
     } else if (studentNameSort === "asc") {
       result = [...result].sort((a, b) =>
@@ -598,6 +759,149 @@ const MappingsManagement = () => {
     parentClassSort,
     parentYearSort,
   ]);
+
+  const teacherTotalPages = Math.ceil(
+    filteredTeacherMappings.length / ITEMS_PER_PAGE
+  );
+
+  const paginatedTeacherMappings = useMemo(() => {
+    const startIndex = (teacherCurrentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredTeacherMappings.slice(startIndex, endIndex);
+  }, [filteredTeacherMappings, teacherCurrentPage]);
+
+  const parentTotalPages = Math.ceil(
+    filteredParentMappings.length / ITEMS_PER_PAGE
+  );
+
+  const paginatedParentMappings = useMemo(() => {
+    const startIndex = (parentCurrentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredParentMappings.slice(startIndex, endIndex);
+  }, [filteredParentMappings, parentCurrentPage]);
+
+  const goToTeacherPreviousPage = () => {
+    if (teacherCurrentPage > 1) {
+      setTeacherCurrentPage((prev) => prev - 1);
+    }
+  };
+
+  const goToTeacherNextPage = () => {
+    if (teacherCurrentPage < teacherTotalPages) {
+      setTeacherCurrentPage((prev) => prev + 1);
+    }
+  };
+
+  const goToTeacherPage = (pageNumber) => {
+    setTeacherCurrentPage(pageNumber);
+  };
+
+  const goToParentPreviousPage = () => {
+    if (parentCurrentPage > 1) {
+      setParentCurrentPage((prev) => prev - 1);
+    }
+  };
+
+  const goToParentNextPage = () => {
+    if (parentCurrentPage < parentTotalPages) {
+      setParentCurrentPage((prev) => prev + 1);
+    }
+  };
+
+  const goToParentPage = (pageNumber) => {
+    setParentCurrentPage(pageNumber);
+  };
+
+  const getVisibleTeacherPages = () => {
+    const pages = [];
+
+    if (teacherTotalPages <= 7) {
+      for (let i = 1; i <= teacherTotalPages; i++) {
+        pages.push(i);
+      }
+      return pages;
+    }
+
+    pages.push(1);
+
+    if (teacherCurrentPage > 3) {
+      pages.push("...");
+    }
+
+    const startPage = Math.max(2, teacherCurrentPage - 1);
+    const endPage = Math.min(teacherTotalPages - 1, teacherCurrentPage + 1);
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    if (teacherCurrentPage < teacherTotalPages - 2) {
+      pages.push("...");
+    }
+
+    pages.push(teacherTotalPages);
+
+    return pages;
+  };
+
+  const getVisibleParentPages = () => {
+    const pages = [];
+
+    if (parentTotalPages <= 7) {
+      for (let i = 1; i <= parentTotalPages; i++) {
+        pages.push(i);
+      }
+      return pages;
+    }
+
+    pages.push(1);
+
+    if (parentCurrentPage > 3) {
+      pages.push("...");
+    }
+
+    const startPage = Math.max(2, parentCurrentPage - 1);
+    const endPage = Math.min(parentTotalPages - 1, parentCurrentPage + 1);
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    if (parentCurrentPage < parentTotalPages - 2) {
+      pages.push("...");
+    }
+
+    pages.push(parentTotalPages);
+
+    return pages;
+  };
+
+  const teacherOptions = teachers.map((teacher) => ({
+    value: String(teacher.TeacherId),
+    label: `${teacher.FullName} (${teacher.TeacherCode})`,
+  }));
+
+  const classOptions = classes.map((cls) => ({
+    value: String(cls.ClassId),
+    label: `${cls.ClassName} - ${cls.Section} (${cls.AcademicYear})`,
+  }));
+
+  const subjectOptions = subjects.map((subject) => ({
+    value: String(subject.SubjectId),
+    label: subject.SubjectName,
+  }));
+
+  const parentOptions = parents.map((parent) => ({
+    value: String(parent.ParentId),
+    label: `${parent.FullName} (${parent.ParentCode})`,
+  }));
+
+  const studentOptions = students.map((student) => ({
+    value: String(student.StudentId),
+    label: `${student.StudentName}${
+      student.RollNumber ? ` (${student.RollNumber})` : ""
+    }`,
+  }));
 
   const TeacherMappingCard = ({ item }) => (
     <div className="rounded-2xl border border-[#e7d5b7] bg-white p-4 shadow-sm space-y-3">
@@ -763,205 +1067,315 @@ const MappingsManagement = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                placeholder="Search teacher, class or subject"
+                value={teacherSearch}
+                onChange={(e) => setTeacherSearch(e.target.value)}
+                className="w-full rounded-2xl border border-[#b9c7da] bg-white px-4 py-3 outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a]"
+              />
+
               <button
                 onClick={handleClearTeacherFilters}
-                className="w-full sm:w-auto rounded-2xl bg-black text-white px-4 py-2.5 text-sm font-medium hover:opacity-90"
+                className="w-full sm:w-auto sm:min-w-[90px] rounded-2xl bg-black text-white px-4 py-2.5 text-sm font-medium hover:opacity-90"
               >
                 Clear
               </button>
             </div>
-
-            <input
-              type="text"
-              placeholder="Search teacher, class or subject"
-              value={teacherSearch}
-              onChange={(e) => setTeacherSearch(e.target.value)}
-              className="w-full rounded-2xl border border-[#b9c7da] bg-white px-4 py-3 outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a]"
-            />
           </div>
 
           <div className="block 2xl:hidden p-4 space-y-4 bg-[#fcfaf6]">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <select
-                value={teacherNameSort}
-                onChange={(e) => setOnlyTeacherSort("teacherName", e.target.value)}
-                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+              <button
+                onClick={() => toggleTeacherSort("teacherName")}
+                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
               >
-                <option value="default">Teacher</option>
-                <option value="asc">Teacher A-Z</option>
-                <option value="desc">Teacher Z-A</option>
-              </select>
+                Teacher{getSortIndicator(teacherNameSort)}
+              </button>
 
-              <select
-                value={teacherCodeSort}
-                onChange={(e) => setOnlyTeacherSort("teacherCode", e.target.value)}
-                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+              <button
+                onClick={() => toggleTeacherSort("teacherCode")}
+                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
               >
-                <option value="default">Code</option>
-                <option value="asc">Code A-Z</option>
-                <option value="desc">Code Z-A</option>
-              </select>
+                Code{getSortIndicator(teacherCodeSort)}
+              </button>
 
-              <select
-                value={teacherClassSort}
-                onChange={(e) => setOnlyTeacherSort("teacherClass", e.target.value)}
-                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+              <button
+                onClick={() => toggleTeacherSort("teacherClass")}
+                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
               >
-                <option value="default">Class</option>
-                <option value="asc">Class Low-High</option>
-                <option value="desc">Class High-Low</option>
-              </select>
+                Class{getSortIndicator(teacherClassSort)}
+              </button>
 
-              <select
-                value={teacherYearSort}
-                onChange={(e) => setOnlyTeacherSort("teacherYear", e.target.value)}
-                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+              <button
+                onClick={() => toggleTeacherSort("teacherYear")}
+                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
               >
-                <option value="default">Year</option>
-                <option value="asc">Year Old-New</option>
-                <option value="desc">Year New-Old</option>
-              </select>
+                Year{getSortIndicator(teacherYearSort)}
+              </button>
 
-              <select
-                value={teacherSubjectSort}
-                onChange={(e) => setOnlyTeacherSort("teacherSubject", e.target.value)}
-                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+              <button
+                onClick={() => toggleTeacherSort("teacherSubject")}
+                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
               >
-                <option value="default">Subject</option>
-                <option value="asc">Subject A-Z</option>
-                <option value="desc">Subject Z-A</option>
-              </select>
+                Subject{getSortIndicator(teacherSubjectSort)}
+              </button>
             </div>
 
             {tableLoading ? (
               <div className="p-6 text-center text-gray-600">Loading mappings...</div>
-            ) : filteredTeacherMappings.length === 0 ? (
+            ) : paginatedTeacherMappings.length === 0 ? (
               <div className="p-6 text-center text-gray-600">No mappings found</div>
             ) : (
-              filteredTeacherMappings.map((item) => (
+              paginatedTeacherMappings.map((item) => (
                 <TeacherMappingCard key={item.MappingId} item={item} />
               ))
+            )}
+
+            {filteredTeacherMappings.length > 0 && teacherTotalPages > 1 && (
+              <div className="rounded-2xl border border-[#d6c2a8] bg-white p-4 shadow-sm">
+                <p className="mb-4 text-center text-sm text-[#6b7280]">
+                  Showing {(teacherCurrentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                  {Math.min(
+                    teacherCurrentPage * ITEMS_PER_PAGE,
+                    filteredTeacherMappings.length
+                  )}{" "}
+                  of {filteredTeacherMappings.length} teacher mappings
+                </p>
+
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    onClick={() => goToTeacherPage(1)}
+                    disabled={teacherCurrentPage === 1}
+                    className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ≪
+                  </button>
+
+                  <button
+                    onClick={goToTeacherPreviousPage}
+                    disabled={teacherCurrentPage === 1}
+                    className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ‹
+                  </button>
+
+                  {getVisibleTeacherPages().map((page, index) =>
+                    page === "..." ? (
+                      <span
+                        key={`teacher-ellipsis-mobile-${index}`}
+                        className="flex h-11 min-w-[44px] items-center justify-center rounded-2xl px-2 text-base font-semibold text-[#6b7280]"
+                      >
+                        ...
+                      </span>
+                    ) : (
+                      <button
+                        key={`teacher-mobile-${page}`}
+                        onClick={() => goToTeacherPage(page)}
+                        className={`h-11 min-w-[44px] rounded-2xl px-3 text-base font-semibold transition ${
+                          teacherCurrentPage === page
+                            ? "bg-blue-500 text-white shadow-md"
+                            : "border border-[#d6c2a8] bg-white text-[#1a1a1a] hover:bg-[#efe4d2]"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  )}
+
+                  <button
+                    onClick={goToTeacherNextPage}
+                    disabled={teacherCurrentPage === teacherTotalPages}
+                    className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ›
+                  </button>
+
+                  <button
+                    onClick={() => goToTeacherPage(teacherTotalPages)}
+                    disabled={teacherCurrentPage === teacherTotalPages}
+                    className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ≫
+                  </button>
+                </div>
+              </div>
             )}
           </div>
 
           <div className="hidden 2xl:block overflow-x-auto">
             {tableLoading ? (
               <div className="p-8 text-center text-gray-600">Loading mappings...</div>
-            ) : filteredTeacherMappings.length === 0 ? (
+            ) : paginatedTeacherMappings.length === 0 ? (
               <div className="p-8 text-center text-gray-600">No mappings found</div>
             ) : (
-              <table className="min-w-[1080px] w-full">
-                <thead className="bg-[#fbf7f0]">
-                  <tr>
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Teacher</span>
-                        <select
-                          value={teacherNameSort}
-                          onChange={(e) => setOnlyTeacherSort("teacherName", e.target.value)}
-                          className="w-[64px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px]"
-                        >
-                          <option value="default">Def</option>
-                          <option value="asc">A-Z</option>
-                          <option value="desc">Z-A</option>
-                        </select>
-                      </div>
-                    </th>
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Teacher Code</span>
-                        <select
-                          value={teacherCodeSort}
-                          onChange={(e) => setOnlyTeacherSort("teacherCode", e.target.value)}
-                          className="w-[64px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px]"
-                        >
-                          <option value="default">Def</option>
-                          <option value="asc">A-Z</option>
-                          <option value="desc">Z-A</option>
-                        </select>
-                      </div>
-                    </th>
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Class</span>
-                        <select
-                          value={teacherClassSort}
-                          onChange={(e) => setOnlyTeacherSort("teacherClass", e.target.value)}
-                          className="w-[78px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px]"
-                        >
-                          <option value="default">Def</option>
-                          <option value="asc">Low-Hi</option>
-                          <option value="desc">High-Lo</option>
-                        </select>
-                      </div>
-                    </th>
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black">Section</th>
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Academic Year</span>
-                        <select
-                          value={teacherYearSort}
-                          onChange={(e) => setOnlyTeacherSort("teacherYear", e.target.value)}
-                          className="w-[78px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px]"
-                        >
-                          <option value="default">Def</option>
-                          <option value="asc">Old-New</option>
-                          <option value="desc">New-Old</option>
-                        </select>
-                      </div>
-                    </th>
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Subject</span>
-                        <select
-                          value={teacherSubjectSort}
-                          onChange={(e) => setOnlyTeacherSort("teacherSubject", e.target.value)}
-                          className="w-[64px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px]"
-                        >
-                          <option value="default">Def</option>
-                          <option value="asc">A-Z</option>
-                          <option value="desc">Z-A</option>
-                        </select>
-                      </div>
-                    </th>
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTeacherMappings.map((item) => (
-                    <tr key={item.MappingId} className="border-t border-[#eee2cf] hover:bg-[#fcfaf6]">
-                      <td className="px-3 py-4 text-black max-w-[110px] truncate" title={item.TeacherName}>
-                        {item.TeacherName}
-                      </td>
-                      <td className="px-3 py-4 text-[#a57f42] font-semibold max-w-[110px] truncate" title={item.TeacherCode}>
-                        {item.TeacherCode}
-                      </td>
-                      <td className="px-3 py-4 text-gray-700 whitespace-nowrap">{item.ClassName}</td>
-                      <td className="px-3 py-4 text-gray-700 whitespace-nowrap">{item.Section}</td>
-                      <td className="px-3 py-4 text-gray-700 whitespace-nowrap">{item.AcademicYear}</td>
-                      <td className="px-3 py-4 text-gray-700 max-w-[110px] truncate" title={item.SubjectName}>
-                        {item.SubjectName}
-                      </td>
-                      <td className="px-3 py-4">
-                        <div className="flex flex-col gap-2 w-[88px]">
-                          <button
-                            onClick={() => handleEditTeacherMapping(item)}
-                            className="rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1.5 text-xs font-semibold"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteTeacherMapping(item.MappingId)}
-                            className="rounded-xl bg-gray-900 text-white hover:bg-black px-3 py-1.5 text-xs font-semibold"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
+              <>
+                <table className="min-w-[1080px] w-full">
+                  <thead className="bg-[#fbf7f0]">
+                    <tr>
+                      <th
+                        onClick={() => toggleTeacherSort("teacherName")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Teacher{getSortIndicator(teacherNameSort)}
+                      </th>
+                      <th
+                        onClick={() => toggleTeacherSort("teacherCode")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Teacher Code{getSortIndicator(teacherCodeSort)}
+                      </th>
+                      <th
+                        onClick={() => toggleTeacherSort("teacherClass")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Class{getSortIndicator(teacherClassSort)}
+                      </th>
+                      <th className="text-left px-3 py-3 text-sm font-bold text-black">
+                        Section
+                      </th>
+                      <th
+                        onClick={() => toggleTeacherSort("teacherYear")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Academic Year{getSortIndicator(teacherYearSort)}
+                      </th>
+                      <th
+                        onClick={() => toggleTeacherSort("teacherSubject")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Subject{getSortIndicator(teacherSubjectSort)}
+                      </th>
+                      <th className="text-left px-3 py-3 text-sm font-bold text-black">
+                        Action
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {paginatedTeacherMappings.map((item) => (
+                      <tr
+                        key={item.MappingId}
+                        className="border-t border-[#eee2cf] hover:bg-[#fcfaf6]"
+                      >
+                        <td
+                          className="px-3 py-4 text-black max-w-[110px] truncate"
+                          title={item.TeacherName}
+                        >
+                          {item.TeacherName}
+                        </td>
+                        <td
+                          className="px-3 py-4 text-[#a57f42] font-semibold max-w-[110px] truncate"
+                          title={item.TeacherCode}
+                        >
+                          {item.TeacherCode}
+                        </td>
+                        <td className="px-3 py-4 text-gray-700 whitespace-nowrap">
+                          {item.ClassName}
+                        </td>
+                        <td className="px-3 py-4 text-gray-700 whitespace-nowrap">
+                          {item.Section}
+                        </td>
+                        <td className="px-3 py-4 text-gray-700 whitespace-nowrap">
+                          {item.AcademicYear}
+                        </td>
+                        <td
+                          className="px-3 py-4 text-gray-700 max-w-[110px] truncate"
+                          title={item.SubjectName}
+                        >
+                          {item.SubjectName}
+                        </td>
+                        <td className="px-3 py-4">
+                          <div className="flex flex-row items-center gap-2 whitespace-nowrap">
+                            <button
+                              onClick={() => handleEditTeacherMapping(item)}
+                              className="rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 px-4 py-2 text-sm font-semibold whitespace-nowrap"
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteTeacherMapping(item.MappingId)}
+                              className="rounded-xl bg-gray-900 text-white hover:bg-black px-4 py-2 text-sm font-semibold whitespace-nowrap"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {filteredTeacherMappings.length > 0 && teacherTotalPages > 1 && (
+                  <div className="mt-6 flex flex-col items-center gap-4 border-t border-[#eadcc8] bg-white px-4 py-6">
+                    <p className="text-sm text-[#6b7280] text-center">
+                      Showing {(teacherCurrentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                      {Math.min(
+                        teacherCurrentPage * ITEMS_PER_PAGE,
+                        filteredTeacherMappings.length
+                      )}{" "}
+                      of {filteredTeacherMappings.length} teacher mappings
+                    </p>
+
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <button
+                        onClick={() => goToTeacherPage(1)}
+                        disabled={teacherCurrentPage === 1}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ≪
+                      </button>
+
+                      <button
+                        onClick={goToTeacherPreviousPage}
+                        disabled={teacherCurrentPage === 1}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ‹
+                      </button>
+
+                      {getVisibleTeacherPages().map((page, index) =>
+                        page === "..." ? (
+                          <span
+                            key={`teacher-ellipsis-${index}`}
+                            className="flex h-12 min-w-[48px] items-center justify-center rounded-2xl px-3 text-lg font-semibold text-[#6b7280]"
+                          >
+                            ...
+                          </span>
+                        ) : (
+                          <button
+                            key={page}
+                            onClick={() => goToTeacherPage(page)}
+                            className={`h-12 min-w-[48px] rounded-2xl px-4 text-lg font-semibold transition ${
+                              teacherCurrentPage === page
+                                ? "bg-blue-500 text-white shadow-md"
+                                : "border border-[#d6c2a8] bg-white text-[#1a1a1a] hover:bg-[#efe4d2]"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        )
+                      )}
+
+                      <button
+                        onClick={goToTeacherNextPage}
+                        disabled={teacherCurrentPage === teacherTotalPages}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ›
+                      </button>
+
+                      <button
+                        onClick={() => goToTeacherPage(teacherTotalPages)}
+                        disabled={teacherCurrentPage === teacherTotalPages}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ≫
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -978,230 +1392,331 @@ const MappingsManagement = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                placeholder="Search parent, student or class"
+                value={parentSearch}
+                onChange={(e) => setParentSearch(e.target.value)}
+                className="w-full rounded-2xl border border-[#b9c7da] bg-white px-4 py-3 outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a]"
+              />
+
               <button
                 onClick={handleClearParentFilters}
-                className="w-full sm:w-auto rounded-2xl bg-black text-white px-4 py-2.5 text-sm font-medium hover:opacity-90"
+                className="w-full sm:w-auto sm:min-w-[90px] rounded-2xl bg-black text-white px-4 py-2.5 text-sm font-medium hover:opacity-90"
               >
                 Clear
               </button>
             </div>
-
-            <input
-              type="text"
-              placeholder="Search parent, student or class"
-              value={parentSearch}
-              onChange={(e) => setParentSearch(e.target.value)}
-              className="w-full rounded-2xl border border-[#b9c7da] bg-white px-4 py-3 outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a]"
-            />
           </div>
 
           <div className="block 2xl:hidden p-4 space-y-4 bg-[#fcfaf6]">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <select
-                value={parentNameSort}
-                onChange={(e) => setOnlyParentSort("parentName", e.target.value)}
-                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+              <button
+                onClick={() => toggleParentSort("parentName")}
+                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
               >
-                <option value="default">Parent</option>
-                <option value="asc">Parent A-Z</option>
-                <option value="desc">Parent Z-A</option>
-              </select>
+                Parent{getSortIndicator(parentNameSort)}
+              </button>
 
-              <select
-                value={parentCodeSort}
-                onChange={(e) => setOnlyParentSort("parentCode", e.target.value)}
-                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+              <button
+                onClick={() => toggleParentSort("parentCode")}
+                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
               >
-                <option value="default">Code</option>
-                <option value="asc">Code A-Z</option>
-                <option value="desc">Code Z-A</option>
-              </select>
+                Code{getSortIndicator(parentCodeSort)}
+              </button>
 
-              <select
-                value={studentNameSort}
-                onChange={(e) => setOnlyParentSort("studentName", e.target.value)}
-                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+              <button
+                onClick={() => toggleParentSort("studentName")}
+                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
               >
-                <option value="default">Student</option>
-                <option value="asc">Student A-Z</option>
-                <option value="desc">Student Z-A</option>
-              </select>
+                Student{getSortIndicator(studentNameSort)}
+              </button>
 
-              <select
-                value={rollNumberSort}
-                onChange={(e) => setOnlyParentSort("rollNumber", e.target.value)}
-                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+              <button
+                onClick={() => toggleParentSort("rollNumber")}
+                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
               >
-                <option value="default">Roll No</option>
-                <option value="asc">Roll Low-High</option>
-                <option value="desc">Roll High-Low</option>
-              </select>
+                Roll No{getSortIndicator(rollNumberSort)}
+              </button>
 
-              <select
-                value={parentClassSort}
-                onChange={(e) => setOnlyParentSort("parentClass", e.target.value)}
-                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+              <button
+                onClick={() => toggleParentSort("parentClass")}
+                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
               >
-                <option value="default">Class</option>
-                <option value="asc">Class Low-High</option>
-                <option value="desc">Class High-Low</option>
-              </select>
+                Class{getSortIndicator(parentClassSort)}
+              </button>
 
-              <select
-                value={parentYearSort}
-                onChange={(e) => setOnlyParentSort("parentYear", e.target.value)}
-                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+              <button
+                onClick={() => toggleParentSort("parentYear")}
+                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
               >
-                <option value="default">Year</option>
-                <option value="asc">Year Old-New</option>
-                <option value="desc">Year New-Old</option>
-              </select>
+                Year{getSortIndicator(parentYearSort)}
+              </button>
             </div>
 
             {tableLoading ? (
               <div className="p-6 text-center text-gray-600">Loading mappings...</div>
-            ) : filteredParentMappings.length === 0 ? (
+            ) : paginatedParentMappings.length === 0 ? (
               <div className="p-6 text-center text-gray-600">No mappings found</div>
             ) : (
-              filteredParentMappings.map((item) => (
+              paginatedParentMappings.map((item) => (
                 <ParentMappingCard key={item.MappingId} item={item} />
               ))
+            )}
+
+            {filteredParentMappings.length > 0 && parentTotalPages > 1 && (
+              <div className="rounded-2xl border border-[#d6c2a8] bg-white p-4 shadow-sm">
+                <p className="mb-4 text-center text-sm text-[#6b7280]">
+                  Showing {(parentCurrentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                  {Math.min(
+                    parentCurrentPage * ITEMS_PER_PAGE,
+                    filteredParentMappings.length
+                  )}{" "}
+                  of {filteredParentMappings.length} parent mappings
+                </p>
+
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    onClick={() => goToParentPage(1)}
+                    disabled={parentCurrentPage === 1}
+                    className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ≪
+                  </button>
+
+                  <button
+                    onClick={goToParentPreviousPage}
+                    disabled={parentCurrentPage === 1}
+                    className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ‹
+                  </button>
+
+                  {getVisibleParentPages().map((page, index) =>
+                    page === "..." ? (
+                      <span
+                        key={`parent-ellipsis-mobile-${index}`}
+                        className="flex h-11 min-w-[44px] items-center justify-center rounded-2xl px-2 text-base font-semibold text-[#6b7280]"
+                      >
+                        ...
+                      </span>
+                    ) : (
+                      <button
+                        key={`parent-mobile-${page}`}
+                        onClick={() => goToParentPage(page)}
+                        className={`h-11 min-w-[44px] rounded-2xl px-3 text-base font-semibold transition ${
+                          parentCurrentPage === page
+                            ? "bg-blue-500 text-white shadow-md"
+                            : "border border-[#d6c2a8] bg-white text-[#1a1a1a] hover:bg-[#efe4d2]"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  )}
+
+                  <button
+                    onClick={goToParentNextPage}
+                    disabled={parentCurrentPage === parentTotalPages}
+                    className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ›
+                  </button>
+
+                  <button
+                    onClick={() => goToParentPage(parentTotalPages)}
+                    disabled={parentCurrentPage === parentTotalPages}
+                    className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ≫
+                  </button>
+                </div>
+              </div>
             )}
           </div>
 
           <div className="hidden 2xl:block overflow-x-auto">
             {tableLoading ? (
               <div className="p-8 text-center text-gray-600">Loading mappings...</div>
-            ) : filteredParentMappings.length === 0 ? (
+            ) : paginatedParentMappings.length === 0 ? (
               <div className="p-8 text-center text-gray-600">No mappings found</div>
             ) : (
-              <table className="min-w-[1180px] w-full">
-                <thead className="bg-[#fbf7f0]">
-                  <tr>
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Parent</span>
-                        <select
-                          value={parentNameSort}
-                          onChange={(e) => setOnlyParentSort("parentName", e.target.value)}
-                          className="w-[64px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px]"
-                        >
-                          <option value="default">Def</option>
-                          <option value="asc">A-Z</option>
-                          <option value="desc">Z-A</option>
-                        </select>
-                      </div>
-                    </th>
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Parent Code</span>
-                        <select
-                          value={parentCodeSort}
-                          onChange={(e) => setOnlyParentSort("parentCode", e.target.value)}
-                          className="w-[64px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px]"
-                        >
-                          <option value="default">Def</option>
-                          <option value="asc">A-Z</option>
-                          <option value="desc">Z-A</option>
-                        </select>
-                      </div>
-                    </th>
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Student</span>
-                        <select
-                          value={studentNameSort}
-                          onChange={(e) => setOnlyParentSort("studentName", e.target.value)}
-                          className="w-[64px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px]"
-                        >
-                          <option value="default">Def</option>
-                          <option value="asc">A-Z</option>
-                          <option value="desc">Z-A</option>
-                        </select>
-                      </div>
-                    </th>
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Roll Number</span>
-                        <select
-                          value={rollNumberSort}
-                          onChange={(e) => setOnlyParentSort("rollNumber", e.target.value)}
-                          className="w-[78px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px]"
-                        >
-                          <option value="default">Def</option>
-                          <option value="asc">Low-Hi</option>
-                          <option value="desc">High-Lo</option>
-                        </select>
-                      </div>
-                    </th>
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Class</span>
-                        <select
-                          value={parentClassSort}
-                          onChange={(e) => setOnlyParentSort("parentClass", e.target.value)}
-                          className="w-[78px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px]"
-                        >
-                          <option value="default">Def</option>
-                          <option value="asc">Low-Hi</option>
-                          <option value="desc">High-Lo</option>
-                        </select>
-                      </div>
-                    </th>
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black">Section</th>
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black align-top">
-                      <div className="flex flex-col gap-2">
-                        <span>Academic Year</span>
-                        <select
-                          value={parentYearSort}
-                          onChange={(e) => setOnlyParentSort("parentYear", e.target.value)}
-                          className="w-[78px] rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px]"
-                        >
-                          <option value="default">Def</option>
-                          <option value="asc">Old-New</option>
-                          <option value="desc">New-Old</option>
-                        </select>
-                      </div>
-                    </th>
-                    <th className="text-left px-3 py-3 text-sm font-bold text-black">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredParentMappings.map((item) => (
-                    <tr key={item.MappingId} className="border-t border-[#eee2cf] hover:bg-[#fcfaf6]">
-                      <td className="px-3 py-4 text-black max-w-[110px] truncate" title={item.ParentName}>
-                        {item.ParentName}
-                      </td>
-                      <td className="px-3 py-4 text-[#a57f42] font-semibold max-w-[110px] truncate" title={item.ParentCode}>
-                        {item.ParentCode}
-                      </td>
-                      <td className="px-3 py-4 text-gray-700 max-w-[110px] truncate" title={item.StudentName}>
-                        {item.StudentName}
-                      </td>
-                      <td className="px-3 py-4 text-gray-700 whitespace-nowrap">{item.RollNumber || "-"}</td>
-                      <td className="px-3 py-4 text-gray-700 whitespace-nowrap">{item.ClassName}</td>
-                      <td className="px-3 py-4 text-gray-700 whitespace-nowrap">{item.Section}</td>
-                      <td className="px-3 py-4 text-gray-700 whitespace-nowrap">{item.AcademicYear}</td>
-                      <td className="px-3 py-4">
-                        <div className="flex flex-col gap-2 w-[88px]">
-                          <button
-                            onClick={() => handleEditParentMapping(item)}
-                            className="rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1.5 text-xs font-semibold"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteParentMapping(item.MappingId)}
-                            className="rounded-xl bg-gray-900 text-white hover:bg-black px-3 py-1.5 text-xs font-semibold"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
+              <>
+                <table className="min-w-[1180px] w-full">
+                  <thead className="bg-[#fbf7f0]">
+                    <tr>
+                      <th
+                        onClick={() => toggleParentSort("parentName")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Parent{getSortIndicator(parentNameSort)}
+                      </th>
+                      <th
+                        onClick={() => toggleParentSort("parentCode")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Parent Code{getSortIndicator(parentCodeSort)}
+                      </th>
+                      <th
+                        onClick={() => toggleParentSort("studentName")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Student{getSortIndicator(studentNameSort)}
+                      </th>
+                      <th
+                        onClick={() => toggleParentSort("rollNumber")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Roll Number{getSortIndicator(rollNumberSort)}
+                      </th>
+                      <th
+                        onClick={() => toggleParentSort("parentClass")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Class{getSortIndicator(parentClassSort)}
+                      </th>
+                      <th className="text-left px-3 py-3 text-sm font-bold text-black">
+                        Section
+                      </th>
+                      <th
+                        onClick={() => toggleParentSort("parentYear")}
+                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                      >
+                        Academic Year{getSortIndicator(parentYearSort)}
+                      </th>
+                      <th className="text-left px-3 py-3 text-sm font-bold text-black">
+                        Action
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {paginatedParentMappings.map((item) => (
+                      <tr
+                        key={item.MappingId}
+                        className="border-t border-[#eee2cf] hover:bg-[#fcfaf6]"
+                      >
+                        <td
+                          className="px-3 py-4 text-black max-w-[110px] truncate"
+                          title={item.ParentName}
+                        >
+                          {item.ParentName}
+                        </td>
+                        <td
+                          className="px-3 py-4 text-[#a57f42] font-semibold max-w-[110px] truncate"
+                          title={item.ParentCode}
+                        >
+                          {item.ParentCode}
+                        </td>
+                        <td
+                          className="px-3 py-4 text-gray-700 max-w-[110px] truncate"
+                          title={item.StudentName}
+                        >
+                          {item.StudentName}
+                        </td>
+                        <td className="px-3 py-4 text-gray-700 whitespace-nowrap">
+                          {item.RollNumber || "-"}
+                        </td>
+                        <td className="px-3 py-4 text-gray-700 whitespace-nowrap">
+                          {item.ClassName}
+                        </td>
+                        <td className="px-3 py-4 text-gray-700 whitespace-nowrap">
+                          {item.Section}
+                        </td>
+                        <td className="px-3 py-4 text-gray-700 whitespace-nowrap">
+                          {item.AcademicYear}
+                        </td>
+                        <td className="px-3 py-4">
+                          <div className="flex flex-row items-center gap-2 whitespace-nowrap">
+                            <button
+                              onClick={() => handleEditParentMapping(item)}
+                              className="rounded-xl bg-blue-100 text-blue-700 hover:bg-blue-200 px-4 py-2 text-sm font-semibold whitespace-nowrap"
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteParentMapping(item.MappingId)}
+                              className="rounded-xl bg-gray-900 text-white hover:bg-black px-4 py-2 text-sm font-semibold whitespace-nowrap"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {filteredParentMappings.length > 0 && parentTotalPages > 1 && (
+                  <div className="mt-6 flex flex-col items-center gap-4 border-t border-[#eadcc8] bg-white px-4 py-6">
+                    <p className="text-sm text-[#6b7280] text-center">
+                      Showing {(parentCurrentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                      {Math.min(
+                        parentCurrentPage * ITEMS_PER_PAGE,
+                        filteredParentMappings.length
+                      )}{" "}
+                      of {filteredParentMappings.length} parent mappings
+                    </p>
+
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <button
+                        onClick={() => goToParentPage(1)}
+                        disabled={parentCurrentPage === 1}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ≪
+                      </button>
+
+                      <button
+                        onClick={goToParentPreviousPage}
+                        disabled={parentCurrentPage === 1}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ‹
+                      </button>
+
+                      {getVisibleParentPages().map((page, index) =>
+                        page === "..." ? (
+                          <span
+                            key={`parent-ellipsis-${index}`}
+                            className="flex h-12 min-w-[48px] items-center justify-center rounded-2xl px-3 text-lg font-semibold text-[#6b7280]"
+                          >
+                            ...
+                          </span>
+                        ) : (
+                          <button
+                            key={page}
+                            onClick={() => goToParentPage(page)}
+                            className={`h-12 min-w-[48px] rounded-2xl px-4 text-lg font-semibold transition ${
+                              parentCurrentPage === page
+                                ? "bg-blue-500 text-white shadow-md"
+                                : "border border-[#d6c2a8] bg-white text-[#1a1a1a] hover:bg-[#efe4d2]"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        )
+                      )}
+
+                      <button
+                        onClick={goToParentNextPage}
+                        disabled={parentCurrentPage === parentTotalPages}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ›
+                      </button>
+
+                      <button
+                        onClick={() => goToParentPage(parentTotalPages)}
+                        disabled={parentCurrentPage === parentTotalPages}
+                        className="h-12 min-w-[48px] rounded-2xl border border-[#d6c2a8] bg-white px-4 text-lg font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        ≫
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -1234,47 +1749,53 @@ const MappingsManagement = () => {
               onSubmit={handleTeacherClassSubjectSubmit}
               className="p-4 sm:p-6 space-y-4 sm:space-y-5"
             >
-              <select
-                name="teacherId"
-                value={teacherClassSubjectForm.teacherId}
-                onChange={handleTeacherClassSubjectChange}
-                className="w-full rounded-[20px] sm:rounded-[24px] border border-[#b9c7da] bg-[#dfe7f5] px-4 sm:px-5 py-3.5 sm:py-4 text-base outline-none"
-              >
-                <option value="">Select teacher</option>
-                {teachers.map((teacher) => (
-                  <option key={teacher.TeacherId} value={teacher.TeacherId}>
-                    {teacher.FullName} ({teacher.TeacherCode})
-                  </option>
-                ))}
-              </select>
+              <Select
+                options={teacherOptions}
+                value={
+                  teacherOptions.find(
+                    (option) => option.value === teacherClassSubjectForm.teacherId
+                  ) || null
+                }
+                onChange={(selectedOption) =>
+                  handleTeacherMappingSelectChange("teacherId", selectedOption)
+                }
+                placeholder="Search and select teacher"
+                isClearable
+                isSearchable
+                styles={searchableSelectStyles}
+              />
 
-              <select
-                name="classId"
-                value={teacherClassSubjectForm.classId}
-                onChange={handleTeacherClassSubjectChange}
-                className="w-full rounded-[20px] sm:rounded-[24px] border border-[#b9c7da] bg-[#dfe7f5] px-4 sm:px-5 py-3.5 sm:py-4 text-base outline-none"
-              >
-                <option value="">Select class</option>
-                {classes.map((cls) => (
-                  <option key={cls.ClassId} value={cls.ClassId}>
-                    {cls.ClassName} - {cls.Section} ({cls.AcademicYear})
-                  </option>
-                ))}
-              </select>
+              <Select
+                options={classOptions}
+                value={
+                  classOptions.find(
+                    (option) => option.value === teacherClassSubjectForm.classId
+                  ) || null
+                }
+                onChange={(selectedOption) =>
+                  handleTeacherMappingSelectChange("classId", selectedOption)
+                }
+                placeholder="Search and select class"
+                isClearable
+                isSearchable
+                styles={searchableSelectStyles}
+              />
 
-              <select
-                name="subjectId"
-                value={teacherClassSubjectForm.subjectId}
-                onChange={handleTeacherClassSubjectChange}
-                className="w-full rounded-[20px] sm:rounded-[24px] border border-[#b9c7da] bg-[#dfe7f5] px-4 sm:px-5 py-3.5 sm:py-4 text-base outline-none"
-              >
-                <option value="">Select subject</option>
-                {subjects.map((subject) => (
-                  <option key={subject.SubjectId} value={subject.SubjectId}>
-                    {subject.SubjectName}
-                  </option>
-                ))}
-              </select>
+              <Select
+                options={subjectOptions}
+                value={
+                  subjectOptions.find(
+                    (option) => option.value === teacherClassSubjectForm.subjectId
+                  ) || null
+                }
+                onChange={(selectedOption) =>
+                  handleTeacherMappingSelectChange("subjectId", selectedOption)
+                }
+                placeholder="Search and select subject"
+                isClearable
+                isSearchable
+                styles={searchableSelectStyles}
+              />
 
               {teacherMappingMessage && (
                 <div className="rounded-2xl border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-700">
@@ -1343,33 +1864,37 @@ const MappingsManagement = () => {
               onSubmit={handleParentStudentSubmit}
               className="p-4 sm:p-6 space-y-4 sm:space-y-5"
             >
-              <select
-                name="parentId"
-                value={parentStudentForm.parentId}
-                onChange={handleParentStudentChange}
-                className="w-full rounded-[20px] sm:rounded-[24px] border border-[#b9c7da] bg-[#dfe7f5] px-4 sm:px-5 py-3.5 sm:py-4 text-base outline-none"
-              >
-                <option value="">Select parent</option>
-                {parents.map((parent) => (
-                  <option key={parent.ParentId} value={parent.ParentId}>
-                    {parent.FullName} ({parent.ParentCode})
-                  </option>
-                ))}
-              </select>
+              <Select
+                options={parentOptions}
+                value={
+                  parentOptions.find(
+                    (option) => option.value === parentStudentForm.parentId
+                  ) || null
+                }
+                onChange={(selectedOption) =>
+                  handleParentMappingSelectChange("parentId", selectedOption)
+                }
+                placeholder="Search and select parent"
+                isClearable
+                isSearchable
+                styles={searchableSelectStyles}
+              />
 
-              <select
-                name="studentId"
-                value={parentStudentForm.studentId}
-                onChange={handleParentStudentChange}
-                className="w-full rounded-[20px] sm:rounded-[24px] border border-[#b9c7da] bg-[#dfe7f5] px-4 sm:px-5 py-3.5 sm:py-4 text-base outline-none"
-              >
-                <option value="">Select student</option>
-                {students.map((student) => (
-                  <option key={student.StudentId} value={student.StudentId}>
-                    {student.StudentName} - {student.ClassName} {student.Section}
-                  </option>
-                ))}
-              </select>
+              <Select
+                options={studentOptions}
+                value={
+                  studentOptions.find(
+                    (option) => option.value === parentStudentForm.studentId
+                  ) || null
+                }
+                onChange={(selectedOption) =>
+                  handleParentMappingSelectChange("studentId", selectedOption)
+                }
+                placeholder="Search and select student"
+                isClearable
+                isSearchable
+                styles={searchableSelectStyles}
+              />
 
               {parentMappingMessage && (
                 <div className="rounded-2xl border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-700">

@@ -1,10 +1,16 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import api from "../../api/axios";
 
 const TeacherRespond = () => {
   const navigate = useNavigate();
   const { teacherId, feedbackId } = useParams();
+  const [searchParams] = useSearchParams();
+  const commentsSectionRef = useRef(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -48,6 +54,23 @@ const TeacherRespond = () => {
       fetchFeedbackItem();
     }
   }, [teacherId, feedbackId]);
+
+  useEffect(() => {
+    const shouldScrollToComments = searchParams.get("scroll") === "comments";
+
+    if (!shouldScrollToComments || loading || !feedbackItem) return;
+
+    const timer = setTimeout(() => {
+      if (commentsSectionRef.current) {
+        commentsSectionRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchParams, loading, feedbackItem]);
 
   const formatDateTime = (dateValue) => {
     if (!dateValue) {
@@ -321,7 +344,10 @@ const TeacherRespond = () => {
                 </div>
               </section>
 
-              <section className="rounded-3xl border border-[#d6c2a8] bg-[#fffaf3] p-5 shadow-md sm:p-6">
+              <section
+                ref={commentsSectionRef}
+                className="rounded-3xl border border-[#d6c2a8] bg-[#fffaf3] p-5 shadow-md sm:p-6"
+              >
                 <div>
                   <h3 className="text-2xl font-bold text-[#1a1a1a]">
                     Comments & Response

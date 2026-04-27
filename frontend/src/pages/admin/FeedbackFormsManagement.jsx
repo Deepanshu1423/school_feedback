@@ -2,29 +2,50 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "../../api/axios";
 
 const FeedbackFormsManagement = () => {
+  // =========================
+  // Form state
+  // =========================
   const [formData, setFormData] = useState({
     formName: "",
     description: "",
   });
 
+  // =========================
+  // Main data state
+  // =========================
   const [forms, setForms] = useState([]);
   const [loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  // =========================
+  // Modal / edit state
+  // =========================
   const [editingFormId, setEditingFormId] = useState(null);
   const [showFormModal, setShowFormModal] = useState(false);
 
+  // =========================
+  // Filter + sort state
+  // "" means no sorting applied
+  // =========================
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [formNameSortOrder, setFormNameSortOrder] = useState("default");
-  const [dateSortOrder, setDateSortOrder] = useState("default");
+  const [formNameSortOrder, setFormNameSortOrder] = useState("");
+  const [dateSortOrder, setDateSortOrder] = useState("");
 
+  // =========================
+  // Initial API call
+  // Feedback forms will be fetched when the page loads.
+  // =========================
   useEffect(() => {
     fetchFeedbackForms();
   }, []);
 
+  // =========================
+  // Auth token headers
+  // To send the token with every protected API call.
+  // =========================
   const getAuthHeaders = () => {
     const token = localStorage.getItem("token");
     return {
@@ -32,6 +53,10 @@ const FeedbackFormsManagement = () => {
     };
   };
 
+  // =========================
+  // Fetch all feedback forms
+  // Fetches the list from the backend
+  // =========================
   const fetchFeedbackForms = async () => {
     try {
       setTableLoading(true);
@@ -51,6 +76,60 @@ const FeedbackFormsManagement = () => {
     }
   };
 
+  // =========================
+  // Sort helpers
+  // toggleSort = click-based sorting
+  // form name: asc -> desc -> default
+  // date: latest -> oldest -> default
+  // =========================
+  const resetAllSorts = () => {
+    setFormNameSortOrder("");
+    setDateSortOrder("");
+  };
+
+  const toggleSort = (type) => {
+    if (type === "formName") {
+      const next =
+        formNameSortOrder === ""
+          ? "asc"
+          : formNameSortOrder === "asc"
+          ? "desc"
+          : "";
+
+      resetAllSorts();
+      setFormNameSortOrder(next);
+    }
+
+    if (type === "date") {
+      const next =
+        dateSortOrder === ""
+          ? "latest"
+          : dateSortOrder === "latest"
+          ? "oldest"
+          : "";
+
+      resetAllSorts();
+      setDateSortOrder(next);
+    }
+  };
+
+  // To display an arrow with the column header.
+  const getSortIndicator = (sortValue, type = "default") => {
+    if (type === "date") {
+      if (sortValue === "latest") return " ↓";
+      if (sortValue === "oldest") return " ↑";
+      return "";
+    }
+
+    if (sortValue === "asc") return " ↑";
+    if (sortValue === "desc") return " ↓";
+    return "";
+  };
+
+  // =========================
+  // Form input change handler
+  // Updates the input fields in the modal.
+  // =========================
   const handleChange = (e) => {
     setFormData((prev) => ({
       ...prev,
@@ -58,6 +137,10 @@ const FeedbackFormsManagement = () => {
     }));
   };
 
+  // =========================
+  // Form reset
+  // Brings the Create/Edit modal to a clean state.
+  // =========================
   const resetForm = () => {
     setFormData({
       formName: "",
@@ -68,16 +151,19 @@ const FeedbackFormsManagement = () => {
     setError("");
   };
 
+  // Create modal open
   const openCreateModal = () => {
     resetForm();
     setShowFormModal(true);
   };
 
+  // Modal close
   const closeFormModal = () => {
     resetForm();
     setShowFormModal(false);
   };
 
+  // Edit modal open with existing data
   const handleEdit = (form) => {
     setMessage("");
     setError("");
@@ -89,13 +175,22 @@ const FeedbackFormsManagement = () => {
     setShowFormModal(true);
   };
 
+  // =========================
+  // Clear filters + sorting
+  // Search reset
+  // Status reset
+  // Sorting reset
+  // =========================
   const handleClearFilters = () => {
     setSearchTerm("");
     setStatusFilter("all");
-    setFormNameSortOrder("default");
-    setDateSortOrder("default");
+    resetAllSorts();
   };
 
+  // =========================
+  // Create / Update form submit
+  // If editingFormId exists, update; otherwise, create.
+  // =========================
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -148,6 +243,9 @@ const FeedbackFormsManagement = () => {
     }
   };
 
+  // =========================
+  // Activate / Deactivate form
+  // =========================
   const handleStatusChange = async (feedbackFormId, newStatus) => {
     try {
       setMessage("");
@@ -174,6 +272,10 @@ const FeedbackFormsManagement = () => {
     }
   };
 
+  // =========================
+  // Date helpers
+  // To display a readable date, time, and day label in the UI.
+  // =========================
   const formatDate = (dateValue) => {
     if (!dateValue) return "-";
     const date = new Date(dateValue);
@@ -217,6 +319,10 @@ const FeedbackFormsManagement = () => {
     return "";
   };
 
+  // =========================
+  // Filtered + sorted data
+  // Search + status filter + click sorting
+  // =========================
   const filteredForms = useMemo(() => {
     let result = forms.filter((form) => {
       const matchesSearch =
@@ -254,6 +360,7 @@ const FeedbackFormsManagement = () => {
     return result;
   }, [forms, searchTerm, statusFilter, formNameSortOrder, dateSortOrder]);
 
+  // Summary cards counts
   const activeFormsCount = useMemo(() => {
     return forms.filter((form) => form.IsActive === 1 || form.IsActive === true)
       .length;
@@ -261,6 +368,11 @@ const FeedbackFormsManagement = () => {
 
   const inactiveFormsCount = forms.length - activeFormsCount;
 
+  // =========================
+  // Mobile / small-screen card view
+  // This is used only for small screens
+  // Visible on screens smaller than 2xl
+  // =========================
   const FeedbackFormCard = ({ form }) => (
     <div className="rounded-2xl border border-[#e7d5b7] bg-white p-4 shadow-sm space-y-4">
       <div className="grid grid-cols-1 gap-3 text-sm">
@@ -338,6 +450,9 @@ const FeedbackFormsManagement = () => {
 
   return (
     <div className="space-y-6">
+      {/* =========================
+          Summary cards
+         ========================= */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <div className="rounded-[24px] border border-[#d8c3a0] bg-white px-6 py-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9b7440]">
@@ -368,13 +483,18 @@ const FeedbackFormsManagement = () => {
         </div>
       </div>
 
+      {/* Top error message */}
       {error && !showFormModal && (
         <div className="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
       )}
 
+      {/* =========================
+          Main list section
+         ========================= */}
       <div className="rounded-[28px] border border-[#d8c3a0] bg-white shadow-lg overflow-hidden">
+        {/* Filter / actions header */}
         <div className="bg-[#f1e7d7] px-6 py-5 border-b border-[#dcc7a6] space-y-4">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
@@ -403,6 +523,7 @@ const FeedbackFormsManagement = () => {
             </div>
           </div>
 
+          {/* Search + filter row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input
               type="text"
@@ -424,27 +545,25 @@ const FeedbackFormsManagement = () => {
           </div>
         </div>
 
+        {/* =========================
+            Mobile / tablet sort buttons + card list
+            This is for screens smaller than 2xl.
+           ========================= */}
         <div className="block 2xl:hidden p-4 space-y-4 bg-[#fcfaf6]">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <select
-              value={formNameSortOrder}
-              onChange={(e) => setFormNameSortOrder(e.target.value)}
-              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+            <button
+              onClick={() => toggleSort("formName")}
+              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
             >
-              <option value="default">Form Name</option>
-              <option value="asc">Name A-Z</option>
-              <option value="desc">Name Z-A</option>
-            </select>
+              Form Name{getSortIndicator(formNameSortOrder)}
+            </button>
 
-            <select
-              value={dateSortOrder}
-              onChange={(e) => setDateSortOrder(e.target.value)}
-              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs"
+            <button
+              onClick={() => toggleSort("date")}
+              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
             >
-              <option value="default">Date</option>
-              <option value="latest">Latest</option>
-              <option value="oldest">Oldest</option>
-            </select>
+              Date{getSortIndicator(dateSortOrder, "date")}
+            </button>
           </div>
 
           {tableLoading ? (
@@ -462,6 +581,10 @@ const FeedbackFormsManagement = () => {
           )}
         </div>
 
+        {/* =========================
+            Laptop / desktop table view
+            This is only for 2xl and above screens.
+           ========================= */}
         <div className="hidden 2xl:block overflow-x-auto">
           {tableLoading ? (
             <div className="p-8 text-center text-gray-600">
@@ -475,19 +598,12 @@ const FeedbackFormsManagement = () => {
             <table className="min-w-[1080px] w-full">
               <thead className="bg-[#fbf7f0]">
                 <tr>
-                  <th className="text-left px-3 py-3 text-sm font-bold text-black">
-                    <div className="flex items-center gap-2">
-                      <span>Form Name</span>
-                      <select
-                        value={formNameSortOrder}
-                        onChange={(e) => setFormNameSortOrder(e.target.value)}
-                        className="rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px] font-medium text-black outline-none"
-                      >
-                        <option value="default">Def</option>
-                        <option value="asc">A-Z</option>
-                        <option value="desc">Z-A</option>
-                      </select>
-                    </div>
+                  {/* Click sorting column */}
+                  <th
+                    onClick={() => toggleSort("formName")}
+                    className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                  >
+                    Form Name{getSortIndicator(formNameSortOrder)}
                   </th>
 
                   <th className="text-left px-3 py-3 text-sm font-bold text-black">
@@ -498,19 +614,12 @@ const FeedbackFormsManagement = () => {
                     Status
                   </th>
 
-                  <th className="text-left px-3 py-3 text-sm font-bold text-black">
-                    <div className="flex items-center gap-2">
-                      <span>Created At</span>
-                      <select
-                        value={dateSortOrder}
-                        onChange={(e) => setDateSortOrder(e.target.value)}
-                        className="rounded-lg border border-[#d8c3a0] bg-white px-1.5 py-1 text-[11px] font-medium text-black outline-none"
-                      >
-                        <option value="default">Def</option>
-                        <option value="latest">Latest</option>
-                        <option value="oldest">Oldest</option>
-                      </select>
-                    </div>
+                  {/* Click sorting column */}
+                  <th
+                    onClick={() => toggleSort("date")}
+                    className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                  >
+                    Created At{getSortIndicator(dateSortOrder, "date")}
                   </th>
 
                   <th className="text-left px-3 py-3 text-sm font-bold text-black">
@@ -611,6 +720,9 @@ const FeedbackFormsManagement = () => {
         </div>
       </div>
 
+      {/* =========================
+          Create / Edit modal
+         ========================= */}
       {showFormModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-4">
           <div className="relative w-full max-w-[680px] rounded-[30px] border border-[#d8c3a0] bg-white shadow-2xl overflow-hidden">

@@ -1,9 +1,13 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../../api/axios";
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const roleParam = (searchParams.get("role") || "").toLowerCase();
+  const selectedRole = roleParam === "teacher" ? "Teacher" : "Parent";
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -138,7 +142,6 @@ const ForgotPassword = () => {
     <div className="min-h-screen bg-[#f7f1e8] flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-6xl overflow-hidden rounded-3xl bg-[#fffaf3] border border-[#d6c2a8] shadow-2xl">
         <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[700px]">
-          {/* Left Side */}
           <div className="flex flex-col justify-center bg-gradient-to-br from-[#1a1a1a] via-[#2d241a] to-[#b08d57] p-8 sm:p-10 lg:p-12 text-white">
             <h1 className="text-4xl sm:text-5xl font-bold leading-tight">
               Forgot
@@ -147,9 +150,14 @@ const ForgotPassword = () => {
             </h1>
 
             <p className="mt-5 text-sm sm:text-base leading-7 text-[#f7f1e8]/90">
-              Recover your account securely using OTP verification and set a new
-              password to access the School Feedback System again.
+              Recover your {selectedRole.toLowerCase()} account securely using OTP
+              verification and set a new password to access the School Feedback
+              System again.
             </p>
+
+            <div className="mt-6 inline-block rounded-full bg-white/10 px-4 py-2 text-sm font-semibold">
+              Selected Role: {selectedRole}
+            </div>
 
             <div className="mt-10 space-y-4">
               <div className="rounded-2xl border border-white/10 bg-white/10 p-5 backdrop-blur-sm">
@@ -175,20 +183,19 @@ const ForgotPassword = () => {
             </div>
           </div>
 
-          {/* Right Side */}
           <div className="flex items-center justify-center bg-[#fffaf3] p-6 sm:p-10 lg:p-12">
             <div className="w-full max-w-md">
               <div className="mb-8 text-center lg:text-left">
                 <h2 className="text-3xl sm:text-4xl font-bold text-[#1a1a1a]">
                   {step === 1
-                    ? "Recover Account"
+                    ? `${selectedRole} Account Recovery`
                     : step === 2
                     ? "Verify OTP"
                     : "Reset Password"}
                 </h2>
                 <p className="mt-2 text-sm sm:text-base text-[#6b7280]">
                   {step === 1
-                    ? "Enter your email or mobile to receive OTP"
+                    ? `Enter ${selectedRole.toLowerCase()} email or mobile to receive OTP`
                     : step === 2
                     ? "Enter the OTP sent to your account"
                     : "Set your new password"}
@@ -204,7 +211,7 @@ const ForgotPassword = () => {
                     <input
                       type="text"
                       name="identifier"
-                      placeholder="Enter email or mobile"
+                      placeholder={`Enter ${selectedRole.toLowerCase()} email or mobile`}
                       value={formData.identifier}
                       onChange={handleChange}
                       className="w-full rounded-xl border border-[#d6c2a8] bg-[#f7f1e8] px-4 py-3 text-sm text-[#1a1a1a] outline-none transition focus:border-[#b08d57] focus:bg-white focus:ring-4 focus:ring-[#b08d57]/20"
@@ -336,6 +343,10 @@ const ForgotPassword = () => {
                 <Link to="/" className="font-semibold text-[#b08d57] hover:underline">
                   Login
                 </Link>
+              </div>
+
+              <div className="mt-3 text-center text-xs text-[#8a8a8a]">
+                Account creation is managed by admin only.
               </div>
             </div>
           </div>

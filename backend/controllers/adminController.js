@@ -1,5 +1,6 @@
 const bcrypt = require("bcryptjs");
 const adminModel = require("../models/adminModel");
+const db = require("../config/db");
 
 const getDuplicateFieldMessage = (error) => {
   if (!error || error.code !== "ER_DUP_ENTRY") return null;
@@ -7,6 +8,7 @@ const getDuplicateFieldMessage = (error) => {
   const msg = error.sqlMessage || "";
 
   if (msg.includes("Email")) return "Email already exists";
+  if (msg.includes("AlternateMobile")) return "Alternate mobile number already exists";
   if (msg.includes("Mobile")) return "Mobile number already exists";
   if (msg.includes("ParentCode")) return "Parent code already exists";
   if (msg.includes("TeacherCode")) return "Teacher code already exists";
@@ -14,7 +16,10 @@ const getDuplicateFieldMessage = (error) => {
   if (msg.includes("SubjectName")) return "Subject already exists";
   if (msg.includes("UQ_master_Classes")) return "This class already exists for the selected section and academic year";
   if (msg.includes("UQ_user_ParentStudentMapping")) return "This parent-student mapping already exists";
+  if (msg.includes("UQ_user_ParentStudentMapping_StudentId")) return "This student is already mapped to another parent";
   if (msg.includes("UQ_user_TeacherClassSubjectMapping")) return "This teacher-class-subject mapping already exists";
+  if (msg.includes("UQ_user_TeacherClassSubject_ClassSubject"))
+    return "This class and subject is already mapped to another teacher";
   if (msg.includes("FormName")) return "Feedback form already exists";
 
   return "Duplicate record already exists";
@@ -130,8 +135,8 @@ const createClass = (req, res) => {
           success: false,
           message: duplicateMessage || "Failed to create class",
           error: duplicateMessage ? undefined : err.message,
-          });
-        }
+        });
+      }
 
       return res.status(201).json({
         success: true,
@@ -164,8 +169,8 @@ const createSubject = (req, res) => {
         success: false,
         message: duplicateMessage || "Failed to create subject",
         error: duplicateMessage ? undefined : err.message,
-        });
-      }
+      });
+    }
 
     return res.status(201).json({
       success: true,
@@ -188,33 +193,56 @@ const createTeacherClassSubjectMapping = (req, res) => {
     });
   }
 
-  adminModel.createTeacherClassSubjectMapping(
-    {
-      teacherId,
-      classId,
-      subjectId,
-    },
-    (err, result) => {
-      if (err) {
-          const duplicateMessage = getDuplicateFieldMessage(err);
-
-          return res.status(duplicateMessage ? 409 : 500).json({
+  adminModel.checkClassSubjectAlreadyMapped(
+    classId,
+    subjectId,
+    (checkErr, existingRows) => {
+      if (checkErr) {
+        return res.status(500).json({
           success: false,
-          message: duplicateMessage || "Failed to create teacher-class-subject mapping",
-          error: duplicateMessage ? undefined : err.message,
-          });
-        }
+          message: "Failed to validate class-subject mapping",
+          error: checkErr.message,
+        });
+      }
 
-      return res.status(201).json({
-        success: true,
-        message: "Teacher-Class-Subject mapping created successfully",
-        data: {
-          mappingId: result.insertId,
+      if (existingRows.length > 0) {
+        return res.status(409).json({
+          success: false,
+          message: "This class and subject is already mapped to another teacher",
+        });
+      }
+
+      adminModel.createTeacherClassSubjectMapping(
+        {
           teacherId,
           classId,
           subjectId,
         },
-      });
+        (err, result) => {
+          if (err) {
+            const duplicateMessage = getDuplicateFieldMessage(err);
+
+            return res.status(duplicateMessage ? 409 : 500).json({
+              success: false,
+              message:
+                duplicateMessage ||
+                "Failed to create teacher-class-subject mapping",
+              error: duplicateMessage ? undefined : err.message,
+            });
+          }
+
+          return res.status(201).json({
+            success: true,
+            message: "Teacher-Class-Subject mapping created successfully",
+            data: {
+              mappingId: result.insertId,
+              teacherId,
+              classId,
+              subjectId,
+            },
+          });
+        }
+      );
     }
   );
 };
@@ -229,35 +257,51 @@ const createParentStudentMapping = (req, res) => {
     });
   }
 
-  adminModel.createParentStudentMapping(
-    {
-      parentId,
-      studentId,
-    },
-    (err, result) => {
-      if (err) {
+  adminModel.checkStudentAlreadyMapped(studentId, (checkErr, existingRows) => {
+    if (checkErr) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to validate student mapping",
+        error: checkErr.message,
+      });
+    }
+
+    if (existingRows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: "This student is already mapped to another parent",
+      });
+    }
+
+    adminModel.createParentStudentMapping(
+      {
+        parentId,
+        studentId,
+      },
+      (err, result) => {
+        if (err) {
           const duplicateMessage = getDuplicateFieldMessage(err);
 
           return res.status(duplicateMessage ? 409 : 500).json({
             success: false,
             message: duplicateMessage || "Failed to create parent-student mapping",
             error: duplicateMessage ? undefined : err.message,
-            });
-          }
+          });
+        }
 
-      return res.status(201).json({
-        success: true,
-        message: "Parent-Student mapping created successfully",
-        data: {
-          mappingId: result.insertId,
-          parentId,
-          studentId,
-        },
-      });
-    }
-  );
+        return res.status(201).json({
+          success: true,
+          message: "Parent-Student mapping created successfully",
+          data: {
+            mappingId: result.insertId,
+            parentId,
+            studentId,
+          },
+        });
+      }
+    );
+  });
 };
-
 const createStudent = (req, res) => {
   const { studentName, classId, rollNumber } = req.body;
 
@@ -298,12 +342,33 @@ const createStudent = (req, res) => {
 };
 
 const createParent = (req, res) => {
-  const { fullName, email, mobile, password } = req.body;
+  const { fullName, email, mobile, alternateMobile, password, address } = req.body;
 
   if (!fullName || !mobile || !password) {
     return res.status(400).json({
       success: false,
       message: "fullName, mobile and password are required",
+    });
+  }
+
+  if (!/^\d{10}$/.test(mobile)) {
+    return res.status(400).json({
+      success: false,
+      message: "Mobile number must be exactly 10 digits",
+    });
+  }
+
+  if (alternateMobile && !/^\d{10}$/.test(alternateMobile)) {
+    return res.status(400).json({
+      success: false,
+      message: "Alternate mobile number must be exactly 10 digits",
+    });
+  }
+
+  if (alternateMobile && alternateMobile === mobile) {
+    return res.status(400).json({
+      success: false,
+      message: "Mobile and alternate mobile cannot be same",
     });
   }
 
@@ -332,6 +397,7 @@ const createParent = (req, res) => {
         fullName,
         email,
         mobile,
+        alternateMobile: alternateMobile || null,
         passwordHash,
       },
       (userErr, userResult) => {
@@ -356,26 +422,30 @@ const createParent = (req, res) => {
             });
           }
 
-          adminModel.createParentProfile(parentId, parentCode, (profileErr) => {
-            if (profileErr) {
-              const duplicateMessage = getDuplicateFieldMessage(profileErr);
+          adminModel.createParentProfile(
+            parentId,
+            parentCode,
+            address || null,
+            (profileErr) => {
+              if (profileErr) {
+                const duplicateMessage = getDuplicateFieldMessage(profileErr);
 
-              return res.status(duplicateMessage ? 409 : 500).json({
-                success: false,
-                message: duplicateMessage || "Failed to create parent profile",
-                error: duplicateMessage ? undefined : profileErr.message,
+                return res.status(duplicateMessage ? 409 : 500).json({
+                  success: false,
+                  message: duplicateMessage || "Failed to create parent profile",
+                  error: duplicateMessage ? undefined : profileErr.message,
+                });
+              }
+
+              return res.status(201).json({
+                success: true,
+                message: "Parent created successfully",
+                data: {
+                  parentId,
+                  parentCode,
+                },
               });
-            }
-
-            return res.status(201).json({
-              success: true,
-              message: "Parent created successfully",
-              data: {
-                parentId,
-                parentCode,
-              },
             });
-          });
         });
       }
     );
@@ -506,6 +576,26 @@ const getAllTeachers = (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Teachers fetched successfully",
+      count: results.length,
+      data: results,
+    });
+  });
+};
+
+
+const getActiveTeachers = (req, res) => {
+  adminModel.getActiveTeachers((err, results) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch active teachers",
+        error: err.message,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Active teachers fetched successfully",
       count: results.length,
       data: results,
     });
@@ -1033,39 +1123,61 @@ const updateTeacherClassSubjectMapping = (req, res) => {
     });
   }
 
-  adminModel.updateTeacherClassSubjectMapping(
+  adminModel.checkClassSubjectAlreadyMappedForUpdate(
     mappingId,
-    { teacherId, classId, subjectId },
-    (err, result) => {
-      if (err) {
-        const duplicateMessage = getDuplicateFieldMessage(err);
-
-        return res.status(duplicateMessage ? 409 : 500).json({
+    classId,
+    subjectId,
+    (checkErr, existingRows) => {
+      if (checkErr) {
+        return res.status(500).json({
           success: false,
-          message:
-            duplicateMessage ||
-            "Failed to update teacher-class-subject mapping",
-          error: duplicateMessage ? undefined : err.message,
+          message: "Failed to validate class-subject mapping",
+          error: checkErr.message,
         });
       }
 
-      if (result.affectedRows === 0) {
-        return res.status(404).json({
+      if (existingRows.length > 0) {
+        return res.status(409).json({
           success: false,
-          message: "Mapping not found",
+          message: "This class and subject is already mapped to another teacher",
         });
       }
 
-      return res.status(200).json({
-        success: true,
-        message: "Teacher-Class-Subject mapping updated successfully",
-        data: {
-          mappingId: Number(mappingId),
-          teacherId,
-          classId,
-          subjectId,
-        },
-      });
+      adminModel.updateTeacherClassSubjectMapping(
+        mappingId,
+        { teacherId, classId, subjectId },
+        (err, result) => {
+          if (err) {
+            const duplicateMessage = getDuplicateFieldMessage(err);
+
+            return res.status(duplicateMessage ? 409 : 500).json({
+              success: false,
+              message:
+                duplicateMessage ||
+                "Failed to update teacher-class-subject mapping",
+              error: duplicateMessage ? undefined : err.message,
+            });
+          }
+
+          if (result.affectedRows === 0) {
+            return res.status(404).json({
+              success: false,
+              message: "Mapping not found",
+            });
+          }
+
+          return res.status(200).json({
+            success: true,
+            message: "Teacher-Class-Subject mapping updated successfully",
+            data: {
+              mappingId: Number(mappingId),
+              teacherId,
+              classId,
+              subjectId,
+            },
+          });
+        }
+      );
     }
   );
 };
@@ -1110,37 +1222,58 @@ const updateParentStudentMapping = (req, res) => {
     });
   }
 
-  adminModel.updateParentStudentMapping(
+  adminModel.checkStudentAlreadyMappedForUpdate(
     mappingId,
-    { parentId, studentId },
-    (err, result) => {
-      if (err) {
-        const duplicateMessage = getDuplicateFieldMessage(err);
-
-        return res.status(duplicateMessage ? 409 : 500).json({
+    studentId,
+    (checkErr, existingRows) => {
+      if (checkErr) {
+        return res.status(500).json({
           success: false,
-          message:
-            duplicateMessage || "Failed to update parent-student mapping",
-          error: duplicateMessage ? undefined : err.message,
+          message: "Failed to validate student mapping",
+          error: checkErr.message,
         });
       }
 
-      if (result.affectedRows === 0) {
-        return res.status(404).json({
+      if (existingRows.length > 0) {
+        return res.status(409).json({
           success: false,
-          message: "Mapping not found",
+          message: "This student is already mapped to another parent",
         });
       }
 
-      return res.status(200).json({
-        success: true,
-        message: "Parent-Student mapping updated successfully",
-        data: {
-          mappingId: Number(mappingId),
-          parentId,
-          studentId,
-        },
-      });
+      adminModel.updateParentStudentMapping(
+        mappingId,
+        { parentId, studentId },
+        (err, result) => {
+          if (err) {
+            const duplicateMessage = getDuplicateFieldMessage(err);
+
+            return res.status(duplicateMessage ? 409 : 500).json({
+              success: false,
+              message:
+                duplicateMessage || "Failed to update parent-student mapping",
+              error: duplicateMessage ? undefined : err.message,
+            });
+          }
+
+          if (result.affectedRows === 0) {
+            return res.status(404).json({
+              success: false,
+              message: "Mapping not found",
+            });
+          }
+
+          return res.status(200).json({
+            success: true,
+            message: "Parent-Student mapping updated successfully",
+            data: {
+              mappingId: Number(mappingId),
+              parentId,
+              studentId,
+            },
+          });
+        }
+      );
     }
   );
 };
@@ -1474,26 +1607,136 @@ const updateTeacher = async (req, res) => {
 
 
 
+
+const updateParent = async (req, res) => {
+  try {
+    const { parentId } = req.params;
+    const { fullName, email, mobile, alternateMobile, password, address } = req.body;
+
+    if (!fullName || !mobile) {
+      return res.status(400).json({
+        success: false,
+        message: "Full name and mobile are required",
+      });
+    }
+
+    if (!/^\d{10}$/.test(mobile)) {
+      return res.status(400).json({
+        success: false,
+        message: "Mobile number must be exactly 10 digits",
+      });
+    }
+
+    if (alternateMobile && !/^\d{10}$/.test(alternateMobile)) {
+      return res.status(400).json({
+        success: false,
+        message: "Alternate mobile number must be exactly 10 digits",
+      });
+    }
+
+    if (alternateMobile && alternateMobile === mobile) {
+      return res.status(400).json({
+        success: false,
+        message: "Mobile and alternate mobile cannot be same",
+      });
+    }
+
+    await adminModel.updateParent(parentId, {
+      fullName,
+      email,
+      mobile,
+      alternateMobile: alternateMobile || null,
+      password,
+      address: address || "",
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Parent updated successfully",
+    });
+  } catch (error) {
+    console.error("Update parent error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update parent",
+    });
+  }
+};
+
+const updateFeedbackForm = (req, res) => {
+  const { feedbackFormId } = req.params;
+  const { formName, description } = req.body;
+
+  if (!formName) {
+    return res.status(400).json({
+      success: false,
+      message: "formName is required",
+    });
+  }
+
+  adminModel.updateFeedbackForm(
+    feedbackFormId,
+    {
+      formName,
+      description: description || null,
+    },
+    (err, result) => {
+      if (err) {
+        const duplicateMessage = getDuplicateFieldMessage(err);
+
+        return res.status(duplicateMessage ? 409 : 500).json({
+          success: false,
+          message: duplicateMessage || "Failed to update feedback form",
+          error: duplicateMessage ? undefined : err.message,
+        });
+      }
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Feedback form not found",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Feedback form updated successfully",
+        data: {
+          feedbackFormId: Number(feedbackFormId),
+          formName,
+          description: description || null,
+        },
+      });
+    }
+  );
+};
+
+
+
+
+
+
 module.exports = {
   createTeacher,
-   createClass,
-   createSubject,
-   createTeacherClassSubjectMapping,
-   createParentStudentMapping,
-   createStudent,
-   createParent,
-   createAdmin,
-   getAllClasses,
-   getAllSubjects,
-   getAllTeachers,
-   getAllParents,
-   getAllStudents,
-   getTeacherPerformanceReport,
-   getClassFeedbackSummaryReport,
-   getMonthlyFeedbackReport,
-   createFeedbackForm,
-   getAllFeedbackForms,
-   updateFeedbackFormStatus,
+  createClass,
+  createSubject,
+  createTeacherClassSubjectMapping,
+  createParentStudentMapping,
+  createStudent,
+  createParent,
+  createAdmin,
+  getAllClasses,
+  getAllSubjects,
+  getAllTeachers,
+  getAllParents,
+  getAllStudents,
+  getTeacherPerformanceReport,
+  getClassFeedbackSummaryReport,
+  getMonthlyFeedbackReport,
+  createFeedbackForm,
+  getAllFeedbackForms,
+  updateFeedbackFormStatus,
   updateTeacherStatus,
   updateParentStatus,
   updateClass,
@@ -1504,14 +1747,18 @@ module.exports = {
   getTeacherClassSubjectMappings,
   getParentStudentMappings,
   updateTeacherClassSubjectMapping,
-deleteTeacherClassSubjectMapping,
-updateParentStudentMapping,
-deleteParentStudentMapping,
-updateStudent,
-updateStudentStatus,
-deleteStudent,
-deleteClass,
-getAllFeedbacks,
-updateTeacher,
+  deleteTeacherClassSubjectMapping,
+  updateParentStudentMapping,
+  deleteParentStudentMapping,
+  updateStudent,
+  updateStudentStatus,
+  deleteStudent,
+  deleteClass,
+  getAllFeedbacks,
+  updateTeacher,
+  updateParent,
+  updateFeedbackForm,
+  getActiveTeachers,
+
 
 };

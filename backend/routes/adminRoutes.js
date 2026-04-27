@@ -146,6 +146,13 @@ router.put(
   adminController.updateParentStatus
 );
 
+router.put(
+  "/update-parent/:parentId",
+  verifyToken,
+  authorizeRoles("Admin"),
+  adminController.updateParent
+);
+
 
 router.put(
   "/update-class/:classId",
@@ -262,6 +269,26 @@ router.get(
 );
 
 
-router.put("/update-teacher/:teacherId", adminController.updateTeacher);
+router.put(
+  "/update-teacher/:teacherId",
+  verifyToken,
+  authorizeRoles("Admin"),
+  adminController.updateTeacher
+);
+
+router.put(
+  "/update-feedback-form/:feedbackFormId",
+  verifyToken,
+  authorizeRoles("Admin"),
+  adminController.updateFeedbackForm
+);
+
+router.get(
+  "/active-teachers",
+  verifyToken,
+  authorizeRoles("Admin"),
+  adminController.getActiveTeachers
+);
+
 
 module.exports = router;

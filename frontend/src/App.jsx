@@ -5,6 +5,7 @@ import ParentRegister from "./pages/auth/ParentRegister";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 
 import ParentDashboard from "./pages/Parent/ParentDashboard";
+import ParentProfile from "./pages/Parent/ParentProfile";
 import SubmitFeedback from "./pages/Parent/SubmitFeedback";
 import FeedbackHistory from "./pages/Parent/FeedbackHistory";
 import SelectChild from "./pages/Parent/SelectChild";
@@ -17,7 +18,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 import AdminLayout from "./components/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminPlaceholder from "./pages/admin/AdminPlaceholder";
+
 import TeachersManagement from "./pages/admin/TeachersManagement";
 import ParentsManagement from "./pages/admin/ParentsManagement";
 import StudentsManagement from "./pages/admin/StudentsManagement";
@@ -32,6 +33,7 @@ import ParentQuickOtpVerify from "./pages/Parent/ParentQuickOtpVerify";
 import FeedbackThankYou from "./pages/Parent/FeedbackThankYou";
 // import QuickSubmitFeedback from "./pages/Parent/QuickSubmitFeedback";
 import AllFeedbacksManagement from "./pages/admin/AllFeedbacksManagement";
+
 
 function App() {
   return (
@@ -72,6 +74,15 @@ function App() {
           }
         />
 
+        <Route
+          path="/parent/profile/:parentId"
+          element={
+            <ProtectedRoute allowedRoles={["Parent", "Admin"]}>
+              <ParentProfile />
+            </ProtectedRoute>
+          }
+        />
+        
         <Route
           path="/submit-feedback/:parentId"
           element={

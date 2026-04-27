@@ -204,7 +204,7 @@ const Login = () => {
                   </Link>
                   <span className="text-[#d6c2a8]">|</span>
                   <Link
-                    to="/forgot-password"
+                    to="/forgot-password?role=parent"
                     className="font-medium transition hover:text-[#8d6b3f]"
                   >
                     Forgot Password?
@@ -213,8 +213,13 @@ const Login = () => {
               )}
 
               {selectedRole === "Teacher" && (
-                <div className="mt-6 text-center text-sm text-[#6b7280] lg:text-left">
-                  Teacher login selected. Parent-only options are hidden.
+                <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm text-[#b08d57] lg:justify-start">
+                  <Link
+                    to="/forgot-password?role=teacher"
+                    className="font-medium transition hover:text-[#8d6b3f]"
+                  >
+                    Forgot Password?
+                  </Link>
                 </div>
               )}
             </div>

@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const bcrypt = require("bcryptjs");
 
 const getTeacherRole = (callback) => {
   const query = `SELECT RoleId FROM master_Roles WHERE RoleName = 'Teacher' LIMIT 1`;
@@ -57,6 +58,57 @@ const createTeacherClassSubjectMapping = (mappingData, callback) => {
   db.query(query, [teacherId, classId, subjectId], callback);
 };
 
+const checkClassSubjectAlreadyMapped = (classId, subjectId, callback) => {
+  const query = `
+    SELECT MappingId, TeacherId, ClassId, SubjectId
+    FROM user_TeacherClassSubjectMapping
+    WHERE ClassId = ? AND SubjectId = ?
+    LIMIT 1
+  `;
+
+  db.query(query, [classId, subjectId], callback);
+};
+
+const checkClassSubjectAlreadyMappedForUpdate = (
+  mappingId,
+  classId,
+  subjectId,
+  callback
+) => {
+  const query = `
+    SELECT MappingId, TeacherId, ClassId, SubjectId
+    FROM user_TeacherClassSubjectMapping
+    WHERE ClassId = ? AND SubjectId = ? AND MappingId != ?
+    LIMIT 1
+  `;
+
+  db.query(query, [classId, subjectId, mappingId], callback);
+};
+
+
+const checkStudentAlreadyMapped = (studentId, callback) => {
+  const query = `
+    SELECT MappingId, ParentId, StudentId
+    FROM user_ParentStudentMapping
+    WHERE StudentId = ?
+    LIMIT 1
+  `;
+
+  db.query(query, [studentId], callback);
+};
+
+const checkStudentAlreadyMappedForUpdate = (mappingId, studentId, callback) => {
+  const query = `
+    SELECT MappingId, ParentId, StudentId
+    FROM user_ParentStudentMapping
+    WHERE StudentId = ?
+      AND MappingId != ?
+    LIMIT 1
+  `;
+
+  db.query(query, [studentId, mappingId], callback);
+};
+
 const createParentStudentMapping = (mappingData, callback) => {
   const { parentId, studentId } = mappingData;
 
@@ -84,24 +136,29 @@ const getParentRole = (callback) => {
   db.query(query, callback);
 };
 
-const createParentUser= (userData, callback) => {
-  const { roleId, fullName, email, mobile, passwordHash } = userData;
+const createParentUser = (userData, callback) => {
+  const { roleId, fullName, email, mobile, alternateMobile, passwordHash } = userData;
 
   const query = `
-    INSERT INTO user_Details (RoleId, FullName, Email, Mobile, PasswordHash)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO user_Details
+    (RoleId, FullName, Email, Mobile, AlternateMobile, PasswordHash)
+    VALUES (?, ?, ?, ?, ?, ?)
   `;
 
-  db.query(query, [roleId, fullName, email, mobile, passwordHash], callback);
+  db.query(
+    query,
+    [roleId, fullName, email || null, mobile, alternateMobile || null, passwordHash],
+    callback
+  );
 };
 
-const createParentProfile= (parentId, parentCode, callback) => {
+const createParentProfile = (parentId, parentCode, address, callback) => {
   const query = `
-    INSERT INTO user_Parents (ParentId, ParentCode)
+    INSERT INTO user_Parents (ParentId, ParentCode, Address)
     VALUES (?, ?)
   `;
 
-  db.query(query, [parentId, parentCode], callback);
+  db.query(query, [parentId, parentCode, address || null], callback);
 };
 const getAdminRole = (callback) => {
   const query = `SELECT RoleId FROM master_Roles WHERE RoleName = 'Admin' LIMIT 1`;
@@ -174,14 +231,36 @@ const getAllTeachers = (callback) => {
   db.query(query, callback);
 };
 
+const getActiveTeachers = (callback) => {
+  const query = `
+    SELECT
+      ut.TeacherId,
+      ut.TeacherCode,
+      ud.FullName,
+      ud.Email,
+      ud.Mobile,
+      ud.IsActive,
+      ud.CreatedAt
+    FROM user_Teachers ut
+    INNER JOIN user_Details ud
+      ON ut.TeacherId = ud.UserId
+    WHERE ud.IsActive = 1
+    ORDER BY ut.TeacherId DESC
+  `;
+
+  db.query(query, callback);
+};
+
 const getAllParents = (callback) => {
   const query = `
     SELECT
       up.ParentId,
       up.ParentCode,
+      up.Address,
       ud.FullName,
       ud.Email,
       ud.Mobile,
+      ud.AlternateMobile,
       ud.IsActive,
       ud.CreatedAt
     FROM user_Parents up
@@ -707,7 +786,104 @@ const updateTeacher = (teacherId, teacherData, callback) => {
 
 
 
-  
+
+const updateParent = async (parentId, parentData) => {
+  const { fullName, email, mobile, alternateMobile, password, address } = parentData;
+
+  const userId = parentId;
+
+  const [parentRows] = await db.promise().query(
+    `
+    SELECT ParentId
+    FROM user_Parents
+    WHERE ParentId = ?
+    `,
+    [parentId]
+  );
+
+  if (parentRows.length === 0) {
+    throw new Error("Parent not found");
+  }
+
+  const [duplicateRows] = await db.promise().query(
+    `
+    SELECT UserId
+    FROM user_Details
+    WHERE UserId != ?
+      AND (
+        Email = ?
+        OR Mobile = ?
+        OR AlternateMobile = ?
+        OR Mobile = ?
+        OR AlternateMobile = ?
+      )
+    `,
+    [
+      userId,
+      email || null,
+      mobile,
+      mobile,
+      alternateMobile || null,
+      alternateMobile || null,
+    ]
+  );
+
+  if (duplicateRows.length > 0) {
+    throw new Error("Email, mobile or alternate mobile already exists for another user");
+  }
+
+  if (password && password.trim() !== "") {
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await db.promise().query(
+      `
+      UPDATE user_Details
+      SET FullName = ?, Email = ?, Mobile = ?, AlternateMobile = ?, PasswordHash = ?
+      WHERE UserId = ?
+      `,
+      [fullName, email || null, mobile, alternateMobile || null, hashedPassword, userId]
+    );
+  } else {
+    await db.promise().query(
+      `
+      UPDATE user_Details
+      SET FullName = ?, Email = ?, Mobile = ?, AlternateMobile = ?
+      WHERE UserId = ?
+      `,
+      [fullName, email || null, mobile, alternateMobile || null, userId]
+    );
+  }
+
+  await db.promise().query(
+    `
+    UPDATE user_Parents
+    SET Address = ?
+    WHERE ParentId = ?
+    `,
+    [address?.trim() || null, parentId]
+  );
+
+  return { success: true };
+};
+
+
+const updateFeedbackForm = (feedbackFormId, formData, callback) => {
+  const { formName, description } = formData;
+
+  const query = `
+    UPDATE master_FeedbackForms
+    SET FormName = ?, Description = ?
+    WHERE FeedbackFormId = ?
+  `;
+
+  db.query(query, [formName, description || null, feedbackFormId], callback);
+};
+
+
+
+
+
+
 
 
 module.exports = {
@@ -741,25 +917,32 @@ module.exports = {
   getNextParentCode,
   updateParentStatus,
   updateClass,
-updateClassStatus,
-updateSubject,
-updateSubjectStatus,
-deleteSubject,
-getTeacherClassSubjectMappings,
-getParentStudentMappings,
-updateTeacherClassSubjectMapping,
-deleteTeacherClassSubjectMapping,
-updateParentStudentMapping,
-deleteParentStudentMapping,
-updateStudent,
-updateStudentStatus,
-checkStudentUsageBeforeDelete,
-deleteStudent,
-checkClassUsageBeforeDelete,
-deleteClass,
-getAllFeedbacks,
-checkTeacherMobileEmailExistsForUpdate,
-updateTeacher,
+  updateClassStatus,
+  updateSubject,
+  updateSubjectStatus,
+  deleteSubject,
+  getTeacherClassSubjectMappings,
+  getParentStudentMappings,
+  updateTeacherClassSubjectMapping,
+  deleteTeacherClassSubjectMapping,
+  updateParentStudentMapping,
+  deleteParentStudentMapping,
+  updateStudent,
+  updateStudentStatus,
+  checkStudentUsageBeforeDelete,
+  deleteStudent,
+  checkClassUsageBeforeDelete,
+  deleteClass,
+  getAllFeedbacks,
+  checkTeacherMobileEmailExistsForUpdate,
+  updateTeacher,
+  updateParent,
+  updateFeedbackForm,
+  getActiveTeachers,
+  checkStudentAlreadyMapped,
+  checkStudentAlreadyMappedForUpdate,
+  checkClassSubjectAlreadyMapped,
+  checkClassSubjectAlreadyMappedForUpdate,
 
 
 };

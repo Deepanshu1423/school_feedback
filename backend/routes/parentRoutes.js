@@ -27,6 +27,24 @@ router.get(
   checkParentAccess,
   parentController.getParentDropdownData
 );
+
+router.get(
+  "/profile/:parentId",
+  verifyToken,
+  authorizeRoles("Parent", "Admin"),
+  checkParentAccess,
+  parentController.getParentProfile
+);
+router.put(
+  "/profile/:parentId",
+  verifyToken,
+  authorizeRoles("Parent", "Admin"),
+  checkParentAccess,
+  parentController.updateParentProfile
+);
+
+
+
 router.get(
   "/student-dashboard/:parentId/:studentId",
   verifyToken,
@@ -34,4 +52,5 @@ router.get(
   checkParentAccess,
   parentController.getParentStudentDashboard
 );
+
 module.exports = router;

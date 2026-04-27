@@ -52,6 +52,75 @@ const getParentDashboardData = (parentId, callback) => {
 
   db.query(query, [parentId], callback);
 };
+const getParentProfile = (parentId, callback) => {
+  const query = `
+    SELECT
+      up.ParentId,
+      up.ParentCode,
+      up.Address,
+      ud.FullName,
+      ud.Email,
+      ud.Mobile,
+      ud.AlternateMobile,
+      ud.IsActive,
+      ud.CreatedAt
+    FROM user_Parents up
+    INNER JOIN user_Details ud
+      ON up.ParentId = ud.UserId
+    WHERE up.ParentId = ?
+    LIMIT 1
+  `;
+
+  db.query(query, [parentId], callback);
+};
+
+const updateParentProfile = async (parentId, profileData) => {
+  const { fullName, alternateMobile, address } = profileData;
+
+  const [rows] = await db.promise().query(
+    `
+    SELECT
+      up.ParentId,
+      ud.Mobile
+    FROM user_Parents up
+    INNER JOIN user_Details ud
+      ON up.ParentId = ud.UserId
+    WHERE up.ParentId = ?
+    LIMIT 1
+    `,
+    [parentId]
+  );
+
+  if (rows.length === 0) {
+    throw new Error("Parent profile not found");
+  }
+
+  const currentMobile = rows[0].Mobile || "";
+
+  if (alternateMobile && alternateMobile === currentMobile) {
+    throw new Error("Mobile and alternate mobile cannot be same");
+  }
+
+  await db.promise().query(
+    `
+    UPDATE user_Details
+    SET FullName = ?, AlternateMobile = ?
+    WHERE UserId = ?
+    `,
+    [fullName, alternateMobile || null, parentId]
+  );
+
+  await db.promise().query(
+    `
+    UPDATE user_Parents
+    SET Address = ?
+    WHERE ParentId = ?
+    `,
+    [address?.trim() || null, parentId]
+  );
+
+  return { success: true };
+};
 
 const getParentFeedbackHistory = (parentId, callback) => {
   const query = `
@@ -279,6 +348,7 @@ const getMappedTeachersAndSubjectsByClassFilters = (
 };
 
 module.exports = {
+  getParentProfile,
   getParentDashboardData,
   getParentFeedbackHistory,
   getParentDropdownData,
@@ -287,4 +357,6 @@ module.exports = {
   getParentStudentFeedbackStats,
   getParentStudentRecentFeedback,
   getMappedTeachersAndSubjectsByClassFilters,
+  getParentProfile,
+  updateParentProfile,
 };
