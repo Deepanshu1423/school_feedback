@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../api/axios";
 
@@ -6,14 +6,24 @@ const ParentDashboard = () => {
   const navigate = useNavigate();
   const { parentId } = useParams();
 
+  // Page loading and message states
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [dashboardData, setDashboardData] = useState(null);
 
+  // Selected student is stored in localStorage
+  // so selected child remains same across parent pages
   const [selectedStudentId, setSelectedStudentId] = useState(
     localStorage.getItem("selectedStudentId") || ""
   );
 
+  // Mobile menu open/close state
+  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+
+  // Ref is used to close mobile menu when user clicks outside
+  const mobileMenuRef = useRef(null);
+
+  // Selected child specific dashboard stats
   const [studentStats, setStudentStats] = useState({
     totalFeedbackSubmitted: 0,
     pendingResponses: 0,
@@ -21,21 +31,52 @@ const ParentDashboard = () => {
     recentFeedback: [],
   });
 
+  // Sorting states for recent feedback
   const [teacherSort, setTeacherSort] = useState("");
   const [subjectSort, setSubjectSort] = useState("");
   const [ratingSort, setRatingSort] = useState("");
   const [submittedSort, setSubmittedSort] = useState("");
 
+  // Logout clears login session and selected child data
   const handleLogout = () => {
+    setIsActionMenuOpen(false);
+
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("selectedStudentId");
     localStorage.removeItem("selectedStudentName");
     localStorage.removeItem("selectedStudentClass");
     localStorage.removeItem("selectedStudentClassId");
+
     navigate("/");
   };
 
+  // Used by mobile dropdown menu items
+  // It closes the menu first, then navigates
+  const handleHeaderNavigate = (path) => {
+    setIsActionMenuOpen(false);
+    navigate(path);
+  };
+
+  // Close mobile menu when user clicks outside the menu button/dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        mobileMenuRef.current &&
+        !mobileMenuRef.current.contains(event.target)
+      ) {
+        setIsActionMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Fetch parent dashboard data
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
@@ -58,6 +99,9 @@ const ParentDashboard = () => {
     }
   }, [parentId]);
 
+  // Auto select child:
+  // If stored child exists, keep it.
+  // Otherwise select the first child by default.
   useEffect(() => {
     if (dashboardData?.students?.length > 0) {
       const storedStudentId = localStorage.getItem("selectedStudentId");
@@ -70,8 +114,10 @@ const ParentDashboard = () => {
         setSelectedStudentId(String(storedStudentId));
       } else {
         const firstStudent = dashboardData.students[0];
-        const classText = `${firstStudent.class?.className || ""}${firstStudent.class?.section ? `-${firstStudent.class.section}` : ""
-          }`;
+
+        const classText = `${firstStudent.class?.className || ""}${
+          firstStudent.class?.section ? `-${firstStudent.class.section}` : ""
+        }`;
 
         setSelectedStudentId(String(firstStudent.studentId));
         localStorage.setItem("selectedStudentId", String(firstStudent.studentId));
@@ -85,6 +131,7 @@ const ParentDashboard = () => {
     }
   }, [dashboardData]);
 
+  // Fetch selected child dashboard stats
   useEffect(() => {
     const fetchSelectedStudentDashboard = async () => {
       if (!parentId || !selectedStudentId) return;
@@ -115,6 +162,7 @@ const ParentDashboard = () => {
     fetchSelectedStudentDashboard();
   }, [parentId, selectedStudentId]);
 
+  // Format date and time with Today / Yesterday label
   const formatDateTime = (dateValue) => {
     if (!dateValue) {
       return {
@@ -182,8 +230,9 @@ const ParentDashboard = () => {
   const studentName = selectedStudent?.studentName || "N/A";
 
   const studentClass = selectedStudent
-    ? `${selectedStudent.class?.className || ""}${selectedStudent.class?.section ? `-${selectedStudent.class.section}` : ""
-    }`
+    ? `${selectedStudent.class?.className || ""}${
+        selectedStudent.class?.section ? `-${selectedStudent.class.section}` : ""
+      }`
     : "N/A";
 
   const academicYear = selectedStudent?.class?.academicYear || "N/A";
@@ -193,6 +242,7 @@ const ParentDashboard = () => {
   const respondedFeedback = studentStats?.respondedFeedback ?? 0;
   const recentFeedback = studentStats?.recentFeedback || [];
 
+  // Change selected child and save it in localStorage
   const handleStudentSelect = (e) => {
     const newStudentId = e.target.value;
 
@@ -201,8 +251,9 @@ const ParentDashboard = () => {
     );
 
     if (selected) {
-      const classText = `${selected.class?.className || ""}${selected.class?.section ? `-${selected.class.section}` : ""
-        }`;
+      const classText = `${selected.class?.className || ""}${
+        selected.class?.section ? `-${selected.class.section}` : ""
+      }`;
 
       localStorage.setItem("selectedStudentId", String(selected.studentId));
       localStorage.setItem("selectedStudentName", selected.studentName || "");
@@ -213,6 +264,11 @@ const ParentDashboard = () => {
       );
 
       setSelectedStudentId(String(selected.studentId));
+
+      // Close mobile menu when child changes
+      setIsActionMenuOpen(false);
+
+      // Reset sorting after child change
       setTeacherSort("");
       setSubjectSort("");
       setRatingSort("");
@@ -220,6 +276,8 @@ const ParentDashboard = () => {
     }
   };
 
+  // Toggle table sorting:
+  // first click asc, second click desc, third click default
   const toggleSort = (column) => {
     if (column === "teacher") {
       const nextSort =
@@ -271,6 +329,8 @@ const ParentDashboard = () => {
     setSubmittedSort("");
   };
 
+  // Recent feedback list:
+  // Dashboard shows only last two days feedback
   const sortedRecentFeedback = useMemo(() => {
     const now = new Date();
     const twoDaysAgo = new Date();
@@ -290,6 +350,7 @@ const ParentDashboard = () => {
       data.sort((a, b) => {
         const aValue = (a.teacher || "").toLowerCase();
         const bValue = (b.teacher || "").toLowerCase();
+
         return teacherSort === "asc"
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
@@ -298,6 +359,7 @@ const ParentDashboard = () => {
       data.sort((a, b) => {
         const aValue = (a.subject || "").toLowerCase();
         const bValue = (b.subject || "").toLowerCase();
+
         return subjectSort === "asc"
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
@@ -306,12 +368,14 @@ const ParentDashboard = () => {
       data.sort((a, b) => {
         const aValue = Number(a.rating) || 0;
         const bValue = Number(b.rating) || 0;
+
         return ratingSort === "asc" ? aValue - bValue : bValue - aValue;
       });
     } else if (submittedSort) {
       data.sort((a, b) => {
         const aValue = a.date ? new Date(a.date).getTime() : 0;
         const bValue = b.date ? new Date(b.date).getTime() : 0;
+
         return submittedSort === "asc" ? aValue - bValue : bValue - aValue;
       });
     }
@@ -333,50 +397,128 @@ const ParentDashboard = () => {
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <select
-                value={selectedStudentId}
-                onChange={handleStudentSelect}
-                className="rounded-xl border border-[#d6c2a8] bg-[#e8dcc8] px-4 py-2.5 pr-10 font-semibold text-black shadow-sm outline-none transition hover:bg-[#ddcfb8]"
-              >
-                {dashboardData?.students?.map((student) => (
-                  <option key={student.studentId} value={student.studentId}>
-                    {student.studentName}
-                    {student.class?.className
-                      ? ` - ${student.class.className}${student.class?.section ? `-${student.class.section}` : ""
-                      }`
-                      : ""}
-                  </option>
-                ))}
-              </select>
+            {/* 
+              Header controls:
+              Mobile view  = menu icon on left + selected child dropdown on right
+              Desktop view = selected child dropdown + normal buttons
+            */}
+            <div className="flex w-full flex-col gap-3 lg:w-auto lg:flex-row lg:items-center">
+              <div className="flex w-full items-center gap-3 lg:w-auto">
+                {/* Mobile menu button */}
+                {/* It is placed on the left side of selected child dropdown */}
+                <div
+                  ref={mobileMenuRef}
+                  className="relative flex flex-shrink-0 justify-start lg:hidden"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setIsActionMenuOpen((prev) => !prev)}
+                    className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#b08d57] font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
+                    aria-label="Open parent menu"
+                  >
+                    <span className="text-2xl leading-none">
+                      {isActionMenuOpen ? "×" : "☰"}
+                    </span>
+                  </button>
 
-              <button
-                onClick={() => navigate(`/parent/profile/${parentId}`)}
-                className="rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
-              >
-                Profile
-              </button>
+                  {isActionMenuOpen && (
+                    <div className="absolute left-0 top-full z-40 mt-2 w-56 overflow-hidden rounded-2xl border border-[#d6c2a8] bg-[#fffaf3] shadow-xl">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleHeaderNavigate(`/parent/profile/${parentId}`)
+                        }
+                        className="block w-full px-4 py-3 text-left text-sm font-semibold text-[#1a1a1a] transition hover:bg-[#f1e7d7]"
+                      >
+                        Profile
+                      </button>
 
-              <button
-                onClick={() => navigate(`/submit-feedback/${parentId}`)}
-                className="rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
-              >
-                Submit Feedback
-              </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleHeaderNavigate(`/submit-feedback/${parentId}`)
+                        }
+                        className="block w-full px-4 py-3 text-left text-sm font-semibold text-[#1a1a1a] transition hover:bg-[#f1e7d7]"
+                      >
+                        Submit Feedback
+                      </button>
 
-              <button
-                onClick={() => navigate(`/parent/feedback-history/${parentId}`)}
-                className="rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
-              >
-                Feedback History
-              </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleHeaderNavigate(
+                            `/parent/feedback-history/${parentId}`
+                          )
+                        }
+                        className="block w-full px-4 py-3 text-left text-sm font-semibold text-[#1a1a1a] transition hover:bg-[#f1e7d7]"
+                      >
+                        Feedback History
+                      </button>
 
-              <button
-                onClick={handleLogout}
-                className="rounded-xl bg-[#e8dcc8] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#d6c2a8]"
-              >
-                Logout
-              </button>
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="block w-full border-t border-[#eadfcf] px-4 py-3 text-left text-sm font-semibold text-red-700 transition hover:bg-red-50"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Selected child dropdown */}
+                <select
+                  value={selectedStudentId}
+                  onChange={handleStudentSelect}
+                  className="min-w-0 flex-1 rounded-xl border border-[#d6c2a8] bg-[#e8dcc8] px-4 py-2.5 pr-10 font-semibold text-black shadow-sm outline-none transition hover:bg-[#ddcfb8] lg:w-auto lg:min-w-[230px] lg:flex-none"
+                >
+                  {dashboardData?.students?.map((student) => (
+                    <option key={student.studentId} value={student.studentId}>
+                      {student.studentName}
+                      {student.class?.className
+                        ? ` - ${student.class.className}${
+                            student.class?.section
+                              ? `-${student.class.section}`
+                              : ""
+                          }`
+                        : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Desktop header buttons */}
+              <div className="hidden flex-wrap gap-3 lg:flex">
+                <button
+                  onClick={() => navigate(`/parent/profile/${parentId}`)}
+                  className="rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
+                >
+                  Profile
+                </button>
+
+                <button
+                  onClick={() => navigate(`/submit-feedback/${parentId}`)}
+                  className="rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
+                >
+                  Submit Feedback
+                </button>
+
+                <button
+                  onClick={() =>
+                    navigate(`/parent/feedback-history/${parentId}`)
+                  }
+                  className="rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
+                >
+                  Feedback History
+                </button>
+
+                <button
+                  onClick={handleLogout}
+                  className="rounded-xl bg-[#e8dcc8] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#d6c2a8]"
+                >
+                  Logout
+                </button>
+              </div>
             </div>
           </div>
         </header>
@@ -497,7 +639,9 @@ const ParentDashboard = () => {
                     </button>
 
                     <button
-                      onClick={() => navigate(`/parent/feedback-history/${parentId}`)}
+                      onClick={() =>
+                        navigate(`/parent/feedback-history/${parentId}`)
+                      }
                       className="rounded-xl bg-[#b08d57] px-4 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
                     >
                       View All
@@ -512,28 +656,28 @@ const ParentDashboard = () => {
                         <tr>
                           <th
                             onClick={() => toggleSort("teacher")}
-                            className="cursor-pointer px-4 py-2 text-left text-sm font-semibold text-[#6b7280] select-none"
+                            className="cursor-pointer select-none px-4 py-2 text-left text-sm font-semibold text-[#6b7280]"
                           >
                             Teacher{getSortIndicator(teacherSort)}
                           </th>
 
                           <th
                             onClick={() => toggleSort("subject")}
-                            className="cursor-pointer px-4 py-2 text-left text-sm font-semibold text-[#6b7280] select-none"
+                            className="cursor-pointer select-none px-4 py-2 text-left text-sm font-semibold text-[#6b7280]"
                           >
                             Subject{getSortIndicator(subjectSort)}
                           </th>
 
                           <th
                             onClick={() => toggleSort("rating")}
-                            className="cursor-pointer px-4 py-2 text-left text-sm font-semibold text-[#6b7280] select-none"
+                            className="cursor-pointer select-none px-4 py-2 text-left text-sm font-semibold text-[#6b7280]"
                           >
                             Rating{getSortIndicator(ratingSort)}
                           </th>
 
                           <th
                             onClick={() => toggleSort("submitted")}
-                            className="cursor-pointer px-4 py-2 text-left text-sm font-semibold text-[#6b7280] select-none"
+                            className="cursor-pointer select-none px-4 py-2 text-left text-sm font-semibold text-[#6b7280]"
                           >
                             Submitted On{getSortIndicator(submittedSort)}
                           </th>
@@ -543,6 +687,7 @@ const ParentDashboard = () => {
                           </th>
                         </tr>
                       </thead>
+
                       <tbody>
                         {sortedRecentFeedback.length > 0 ? (
                           sortedRecentFeedback.map((item, index) => {
@@ -553,12 +698,15 @@ const ParentDashboard = () => {
                                 <td className="rounded-l-xl px-4 py-4 font-medium text-[#1a1a1a]">
                                   {item.teacher || "N/A"}
                                 </td>
+
                                 <td className="px-4 py-4 text-[#1a1a1a]">
                                   {item.subject || "N/A"}
                                 </td>
+
                                 <td className="px-4 py-4 text-[#1a1a1a]">
                                   {item.rating || "N/A"}
                                 </td>
+
                                 <td className="px-4 py-4 text-[#1a1a1a]">
                                   <div className="inline-flex flex-col rounded-xl border border-[#e7dbc9] bg-white px-3 py-2 shadow-sm">
                                     <div className="flex flex-wrap items-center gap-2">
@@ -575,19 +723,21 @@ const ParentDashboard = () => {
                                       </p>
 
                                       {formattedDateTime.relative && (
-                                        <span className="rounded-full bg-[#eee6d8] px-2.5 py-1 text-[11px] font-semibold text-[#8d6b3f]">
+                                        <span className="inline-block w-[90px] rounded-full bg-[#eee6d8] px-2.5 py-1 text-center text-[11px] font-semibold text-[#8d6b3f]">
                                           {formattedDateTime.relative}
                                         </span>
                                       )}
                                     </div>
                                   </div>
                                 </td>
+
                                 <td className="rounded-r-xl px-4 py-4">
                                   <span
-                                    className={`rounded-full px-3 py-1 text-xs font-semibold ${item.status === "Responded"
+                                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                      item.status === "Responded"
                                         ? "bg-green-100 text-green-700"
                                         : "bg-yellow-100 text-yellow-700"
-                                      }`}
+                                    }`}
                                   >
                                     {item.status || "Pending"}
                                   </span>
@@ -631,10 +781,11 @@ const ParentDashboard = () => {
                             </div>
 
                             <span
-                              className={`rounded-full px-3 py-1 text-xs font-semibold ${item.status === "Responded"
+                              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                item.status === "Responded"
                                   ? "bg-green-100 text-green-700"
                                   : "bg-yellow-100 text-yellow-700"
-                                }`}
+                              }`}
                             >
                               {item.status || "Pending"}
                             </span>
@@ -642,7 +793,9 @@ const ParentDashboard = () => {
 
                           <div className="mt-4 space-y-3 text-sm">
                             <div className="rounded-xl bg-white p-3">
-                              <p className="font-semibold text-[#1a1a1a]">Rating</p>
+                              <p className="font-semibold text-[#1a1a1a]">
+                                Rating
+                              </p>
                               <p className="mt-1 text-[#6b7280]">
                                 {item.rating || "N/A"}
                               </p>
@@ -652,6 +805,7 @@ const ParentDashboard = () => {
                               <p className="font-semibold text-[#1a1a1a]">
                                 Submitted At
                               </p>
+
                               <div className="mt-2 rounded-xl border border-[#e7dbc9] bg-[#fffaf3] px-3 py-3">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <span>🗓️</span>
@@ -667,7 +821,7 @@ const ParentDashboard = () => {
                                   </p>
 
                                   {formattedDateTime.relative && (
-                                    <span className="rounded-full bg-[#eee6d8] px-2.5 py-1 text-[11px] font-semibold text-[#8d6b3f]">
+                                    <span className="inline-block w-[90px] rounded-full bg-[#eee6d8] px-2.5 py-1 text-center text-[11px] font-semibold text-[#8d6b3f]">
                                       {formattedDateTime.relative}
                                     </span>
                                   )}

@@ -145,10 +145,19 @@ const TeachersManagement = () => {
   // Open create modal
   // =========================================
   const openCreateModal = () => {
-    resetForm();
+    setEditingTeacherId(null);
+
+    setFormData({
+      fullName: "",
+      email: "",
+      mobile: "",
+      password: "",
+    });
+
+    setMessage("");
+    setError("");
     setShowTeacherModal(true);
   };
-
   // =========================================
   // Open edit modal and prefill form
   // =========================================
@@ -218,8 +227,8 @@ const TeachersManagement = () => {
           editingTeacherId
             ? response.data.message || "Teacher updated successfully"
             : createdCode
-            ? `Teacher created successfully. Teacher Code: ${createdCode}`
-            : response.data.message || "Teacher created successfully"
+              ? `Teacher created successfully. Teacher Code: ${createdCode}`
+              : response.data.message || "Teacher created successfully"
         );
 
         fetchTeachers();
@@ -231,9 +240,9 @@ const TeachersManagement = () => {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          (editingTeacherId
-            ? "Failed to update teacher"
-            : "Failed to create teacher")
+        (editingTeacherId
+          ? "Failed to update teacher"
+          : "Failed to create teacher")
       );
     } finally {
       setLoading(false);
@@ -267,7 +276,7 @@ const TeachersManagement = () => {
       if (response.data.success) {
         setMessage(
           response.data.message ||
-            `Teacher ${newStatus === 1 ? "activated" : "deactivated"} successfully`
+          `Teacher ${newStatus === 1 ? "activated" : "deactivated"} successfully`
         );
         fetchTeachers();
       }
@@ -337,8 +346,8 @@ const TeachersManagement = () => {
         teacherCodeSortOrder === ""
           ? "asc"
           : teacherCodeSortOrder === "asc"
-          ? "desc"
-          : "";
+            ? "desc"
+            : "";
       setTeacherCodeSortOrder(nextSort);
       setNameSortOrder("");
       setDateSortOrder("");
@@ -357,8 +366,8 @@ const TeachersManagement = () => {
         dateSortOrder === ""
           ? "latest"
           : dateSortOrder === "latest"
-          ? "oldest"
-          : "";
+            ? "oldest"
+            : "";
       if (dateSortOrder === "oldest") {
         setDateSortOrder("");
       } else {
@@ -399,8 +408,8 @@ const TeachersManagement = () => {
         statusFilter === "all"
           ? true
           : statusFilter === "active"
-          ? teacher.IsActive === 1 || teacher.IsActive === true
-          : teacher.IsActive === 0 || teacher.IsActive === false;
+            ? teacher.IsActive === 1 || teacher.IsActive === true
+            : teacher.IsActive === 0 || teacher.IsActive === false;
 
       return matchesSearch && matchesStatus;
     });
@@ -492,6 +501,106 @@ const TeachersManagement = () => {
   // Build visible page numbers like:
   // << < 1 2 3 ... 10 > >>
   // =========================================
+
+
+
+
+
+  // =========================================
+  // Mobile / tablet teacher card
+  // =========================================
+  const TeacherCard = ({ teacher }) => (
+    <div className="space-y-4 rounded-2xl border border-[#e7d5b7] bg-white p-4 shadow-sm">
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <div>
+          <p className="text-xs text-gray-500">Teacher Code</p>
+          <p className="break-words font-semibold text-[#a57f42]">
+            {teacher.TeacherCode}
+          </p>
+        </div>
+
+        <div>
+          <p className="text-xs text-gray-500">Name</p>
+          <p className="break-words font-semibold text-black">
+            {teacher.FullName}
+          </p>
+        </div>
+
+        <div className="col-span-2">
+          <p className="text-xs text-gray-500">Email</p>
+          <p className="break-words text-black">{teacher.Email || "-"}</p>
+        </div>
+
+        <div>
+          <p className="text-xs text-gray-500">Mobile</p>
+          <p className="text-black">{teacher.Mobile}</p>
+        </div>
+
+        <div>
+          <p className="text-xs text-gray-500">Status</p>
+          <span
+            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${teacher.IsActive
+              ? "bg-green-100 text-green-700"
+              : "bg-red-100 text-red-700"
+              }`}
+          >
+            {teacher.IsActive ? "Active" : "Inactive"}
+          </span>
+        </div>
+
+        <div className="col-span-2">
+          <p className="mb-2 text-xs text-gray-500">Created At</p>
+          {teacher.CreatedAt ? (
+            <div className="rounded-2xl border border-[#e3d3bb] bg-[#fffdf9] px-3 py-3 shadow-sm">
+              <div className="flex items-center gap-2 text-sm font-semibold text-black">
+                <span>📅</span>
+                <span>{formatDate(teacher.CreatedAt)}</span>
+              </div>
+
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                <span>🕒</span>
+                <span className="whitespace-nowrap">
+                  {formatTime(teacher.CreatedAt)}
+                </span>
+
+                {getDayLabel(teacher.CreatedAt) && (
+                  <span className="rounded-full bg-[#eee4d6] px-2.5 py-1 text-[11px] font-semibold text-[#9b7440]">
+                    {getDayLabel(teacher.CreatedAt)}
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            "-"
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-xl bg-[#f7f1e8] px-4 py-2.5 text-center text-sm font-semibold">
+        <button
+          onClick={() => handleEdit(teacher)}
+          className="text-blue-700 hover:underline"
+        >
+          Edit
+        </button>
+
+        <span className="mx-2 text-[#8b7355]">/</span>
+
+        <button
+          onClick={() =>
+            handleTeacherStatusChange(
+              teacher.TeacherId,
+              teacher.IsActive ? 0 : 1
+            )
+          }
+          className={`hover:underline ${teacher.IsActive ? "text-red-700" : "text-green-700"
+            }`}
+        >
+          {teacher.IsActive ? "Deactivate" : "Activate"}
+        </button>
+      </div>
+    </div>
+  );
   const getVisiblePages = () => {
     const pages = [];
 
@@ -618,10 +727,111 @@ const TeachersManagement = () => {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="block space-y-4 bg-[#fcfaf6] p-4 2xl:hidden">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <button
+                onClick={() => toggleSort("teacherCode")}
+                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-left text-xs font-semibold"
+              >
+                Teacher Code{getSortIndicator(teacherCodeSortOrder)}
+              </button>
+
+              <button
+                onClick={() => toggleSort("name")}
+                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-left text-xs font-semibold"
+              >
+                Name{getSortIndicator(nameSortOrder)}
+              </button>
+
+              <button
+                onClick={() => toggleSort("date")}
+                className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-left text-xs font-semibold"
+              >
+                Date{getSortIndicator(dateSortOrder, "date")}
+              </button>
+            </div>
+
+            {tableLoading ? (
+              <div className="p-6 text-center text-gray-600">Loading teachers...</div>
+            ) : paginatedTeachers.length === 0 ? (
+              <div className="p-6 text-center text-gray-600">No teachers found</div>
+            ) : (
+              paginatedTeachers.map((teacher) => (
+                <TeacherCard key={teacher.TeacherId} teacher={teacher} />
+              ))
+            )}
+
+            {filteredTeachers.length > 0 && totalPages > 1 && (
+              <div className="rounded-2xl border border-[#d6c2a8] bg-white p-4 shadow-sm">
+                <p className="mb-4 text-center text-sm text-[#6b7280]">
+                  Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                  {Math.min(currentPage * ITEMS_PER_PAGE, filteredTeachers.length)} of{" "}
+                  {filteredTeachers.length} teachers
+                </p>
+
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    onClick={() => goToPage(1)}
+                    disabled={currentPage === 1}
+                    className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ≪
+                  </button>
+
+                  <button
+                    onClick={goToPreviousPage}
+                    disabled={currentPage === 1}
+                    className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ‹
+                  </button>
+
+                  {getVisiblePages().map((page, index) =>
+                    page === "..." ? (
+                      <span
+                        key={`ellipsis-mobile-${index}`}
+                        className="flex h-11 min-w-[44px] items-center justify-center rounded-2xl px-2 text-base font-semibold text-[#6b7280]"
+                      >
+                        ...
+                      </span>
+                    ) : (
+                      <button
+                        key={`mobile-${page}`}
+                        onClick={() => goToPage(page)}
+                        className={`h-11 min-w-[44px] rounded-2xl px-3 text-base font-semibold transition ${currentPage === page
+                          ? "bg-blue-500 text-white shadow-md"
+                          : "border border-[#d6c2a8] bg-white text-[#1a1a1a] hover:bg-[#efe4d2]"
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  )}
+
+                  <button
+                    onClick={goToNextPage}
+                    disabled={currentPage === totalPages}
+                    className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ›
+                  </button>
+
+                  <button
+                    onClick={() => goToPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="h-11 min-w-[44px] rounded-2xl border border-[#d6c2a8] bg-white px-3 text-base font-semibold text-[#1a1a1a] transition hover:bg-[#efe4d2] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ≫
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="hidden overflow-x-auto 2xl:block">
             {tableLoading ? (
               <div className="p-8 text-center text-gray-600">Loading teachers...</div>
-            ) : filteredTeachers.length === 0 ? (
+            ) : paginatedTeachers.length === 0 ? (
               <div className="p-8 text-center text-gray-600">No teachers found</div>
             ) : (
               <>
@@ -687,11 +897,10 @@ const TeachersManagement = () => {
 
                         <td className="px-6 py-4">
                           <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                              teacher.IsActive
-                                ? "bg-green-100 text-green-700"
-                                : "bg-red-100 text-red-700"
-                            }`}
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${teacher.IsActive
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
+                              }`}
                           >
                             {teacher.IsActive ? "Active" : "Inactive"}
                           </span>
@@ -739,9 +948,8 @@ const TeachersManagement = () => {
                                   teacher.IsActive ? 0 : 1
                                 )
                               }
-                              className={`hover:underline ${
-                                teacher.IsActive ? "text-red-700" : "text-green-700"
-                              }`}
+                              className={`hover:underline ${teacher.IsActive ? "text-red-700" : "text-green-700"
+                                }`}
                             >
                               {teacher.IsActive ? "Deactivate" : "Activate"}
                             </button>
@@ -752,7 +960,6 @@ const TeachersManagement = () => {
                   </tbody>
                 </table>
 
-                {/* Pagination inside same section */}
                 {filteredTeachers.length > 0 && totalPages > 1 && (
                   <div className="mt-6 flex flex-col items-center gap-4 border-t border-[#eadcc8] bg-white px-4 py-6">
                     <p className="text-sm text-[#6b7280] text-center">
@@ -790,11 +997,10 @@ const TeachersManagement = () => {
                           <button
                             key={page}
                             onClick={() => goToPage(page)}
-                            className={`h-12 min-w-[48px] rounded-2xl px-4 text-lg font-semibold transition ${
-                              currentPage === page
-                                ? "bg-blue-500 text-white shadow-md"
-                                : "border border-[#d6c2a8] bg-white text-[#1a1a1a] hover:bg-[#efe4d2]"
-                            }`}
+                            className={`h-12 min-w-[48px] rounded-2xl px-4 text-lg font-semibold transition ${currentPage === page
+                              ? "bg-blue-500 text-white shadow-md"
+                              : "border border-[#d6c2a8] bg-white text-[#1a1a1a] hover:bg-[#efe4d2]"
+                              }`}
                           >
                             {page}
                           </button>
@@ -849,7 +1055,7 @@ const TeachersManagement = () => {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-5">
+            <form onSubmit={handleSubmit} autoComplete="off" className="p-6 space-y-5">
               <div>
                 <label className="block text-sm font-semibold text-black mb-2">
                   Full Name
@@ -873,6 +1079,7 @@ const TeachersManagement = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
+                  autoComplete="off"
                   placeholder="Enter email"
                   className="w-full rounded-[24px] border border-[#b9c7da] bg-[#dfe7f5] px-5 py-4 text-lg outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a]"
                 />
@@ -905,6 +1112,7 @@ const TeachersManagement = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
+                  autoComplete="new-password"
                   placeholder={
                     editingTeacherId
                       ? "Enter new password only if you want to change it"
@@ -937,8 +1145,8 @@ const TeachersManagement = () => {
                       ? "Updating..."
                       : "Saving..."
                     : editingTeacherId
-                    ? "Update Teacher"
-                    : "Saved"}
+                      ? "Update Teacher"
+                      : "Saved"}
                 </button>
 
                 <button

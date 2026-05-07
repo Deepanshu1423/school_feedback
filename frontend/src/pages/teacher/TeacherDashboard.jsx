@@ -396,7 +396,7 @@ const TeacherDashboard = () => {
                                   </p>
 
                                   {formattedDateTime.relative && (
-                                    <span className="rounded-full bg-[#eee6d8] px-2 py-0.5 text-[11px] font-semibold text-[#8d6b3f] whitespace-nowrap">
+                                    <span className="rounded-full bg-[#eee6d8] w-22.5 text-center inline-block px-2 py-0.5 text-[11px] font-semibold text-[#8d6b3f] whitespace-nowrap">
                                       {formattedDateTime.relative}
                                     </span>
                                   )}

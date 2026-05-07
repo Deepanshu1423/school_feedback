@@ -138,8 +138,8 @@ const StudentsManagement = () => {
         studentNameSortOrder === ""
           ? "asc"
           : studentNameSortOrder === "asc"
-          ? "desc"
-          : "";
+            ? "desc"
+            : "";
       resetAllSorts();
       setStudentNameSortOrder(next);
     }
@@ -149,8 +149,8 @@ const StudentsManagement = () => {
         rollNumberSortOrder === ""
           ? "asc"
           : rollNumberSortOrder === "asc"
-          ? "desc"
-          : "";
+            ? "desc"
+            : "";
       resetAllSorts();
       setRollNumberSortOrder(next);
     }
@@ -160,8 +160,8 @@ const StudentsManagement = () => {
         classSortOrder === ""
           ? "asc"
           : classSortOrder === "asc"
-          ? "desc"
-          : "";
+            ? "desc"
+            : "";
       resetAllSorts();
       setClassSortOrder(next);
     }
@@ -171,8 +171,8 @@ const StudentsManagement = () => {
         academicYearSortOrder === ""
           ? "asc"
           : academicYearSortOrder === "asc"
-          ? "desc"
-          : "";
+            ? "desc"
+            : "";
       resetAllSorts();
       setAcademicYearSortOrder(next);
     }
@@ -182,8 +182,8 @@ const StudentsManagement = () => {
         dateSortOrder === ""
           ? "latest"
           : dateSortOrder === "latest"
-          ? "oldest"
-          : "";
+            ? "oldest"
+            : "";
       resetAllSorts();
       setDateSortOrder(next);
     }
@@ -219,9 +219,24 @@ const StudentsManagement = () => {
   // Handle form input changes
   // =========================================
   const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    // Roll Number me sirf digits allow honge
+    // Aur maximum 15 digits hi store honge
+    if (name === "rollNumber") {
+      const onlyDigits = value.replace(/\D/g, "").slice(0, 15);
+
+      setFormData((prev) => ({
+        ...prev,
+        rollNumber: onlyDigits,
+      }));
+
+      return;
+    }
+
     setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [name]: value,
     }));
   };
 
@@ -275,8 +290,17 @@ const StudentsManagement = () => {
     setMessage("");
     setError("");
 
-    if (!formData.studentName || !formData.classId) {
-      setError("Student name and class are required");
+    if (
+      !formData.studentName.trim() ||
+      !formData.classId ||
+      !formData.rollNumber.trim()
+    ) {
+      setError("Student name, class and roll number are required");
+      return;
+    }
+
+    if (!/^\d{1,15}$/.test(formData.rollNumber.trim())) {
+      setError("Roll number must contain only digits and maximum 15 digits");
       return;
     }
 
@@ -284,25 +308,24 @@ const StudentsManagement = () => {
       setLoading(true);
 
       const payload = {
-        studentName: formData.studentName,
+        studentName: formData.studentName.trim(),
         classId: Number(formData.classId),
-        rollNumber: formData.rollNumber || null,
+        rollNumber: formData.rollNumber.trim(),
       };
-
       const response = editingStudentId
         ? await axios.put(`/admin/update-student/${editingStudentId}`, payload, {
-            headers: getAuthHeaders(),
-          })
+          headers: getAuthHeaders(),
+        })
         : await axios.post("/admin/create-student", payload, {
-            headers: getAuthHeaders(),
-          });
+          headers: getAuthHeaders(),
+        });
 
       if (response.data.success) {
         setMessage(
           response.data.message ||
-            (editingStudentId
-              ? "Student updated successfully"
-              : "Student created successfully")
+          (editingStudentId
+            ? "Student updated successfully"
+            : "Student created successfully")
         );
         fetchStudents();
 
@@ -313,7 +336,7 @@ const StudentsManagement = () => {
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          (editingStudentId ? "Failed to update student" : "Failed to create student")
+        (editingStudentId ? "Failed to update student" : "Failed to create student")
       );
     } finally {
       setLoading(false);
@@ -347,7 +370,7 @@ const StudentsManagement = () => {
       if (response.data.success) {
         setMessage(
           response.data.message ||
-            `Student ${newStatus === 1 ? "activated" : "deactivated"} successfully`
+          `Student ${newStatus === 1 ? "activated" : "deactivated"} successfully`
         );
         fetchStudents();
       }
@@ -481,8 +504,8 @@ const StudentsManagement = () => {
         statusFilter === "all"
           ? true
           : statusFilter === "active"
-          ? student.IsActive === 1 || student.IsActive === true
-          : student.IsActive === 0 || student.IsActive === false;
+            ? student.IsActive === 1 || student.IsActive === true
+            : student.IsActive === 0 || student.IsActive === false;
 
       const matchesClass =
         classFilter === "all" ? true : String(student.ClassId) === classFilter;
@@ -668,11 +691,10 @@ const StudentsManagement = () => {
         <div>
           <p className="text-xs text-gray-500">Status</p>
           <span
-            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-              student.IsActive
-                ? "bg-green-100 text-green-700"
-                : "bg-red-100 text-red-700"
-            }`}
+            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${student.IsActive
+              ? "bg-green-100 text-green-700"
+              : "bg-red-100 text-red-700"
+              }`}
           >
             {student.IsActive ? "Active" : "Inactive"}
           </span>
@@ -718,11 +740,10 @@ const StudentsManagement = () => {
               student.IsActive ? 0 : 1
             )
           }
-          className={`w-full rounded-xl px-4 py-2 text-sm font-semibold ${
-            student.IsActive
-              ? "bg-red-100 text-red-700 hover:bg-red-200"
-              : "bg-green-100 text-green-700 hover:bg-green-200"
-          }`}
+          className={`w-full rounded-xl px-4 py-2 text-sm font-semibold ${student.IsActive
+            ? "bg-red-100 text-red-700 hover:bg-red-200"
+            : "bg-green-100 text-green-700 hover:bg-green-200"
+            }`}
         >
           {student.IsActive ? "Deactivate" : "Activate"}
         </button>
@@ -943,11 +964,10 @@ const StudentsManagement = () => {
                       <button
                         key={`mobile-${page}`}
                         onClick={() => goToPage(page)}
-                        className={`h-11 min-w-[44px] rounded-2xl px-3 text-base font-semibold transition ${
-                          currentPage === page
-                            ? "bg-blue-500 text-white shadow-md"
-                            : "border border-[#d6c2a8] bg-white text-[#1a1a1a] hover:bg-[#efe4d2]"
-                        }`}
+                        className={`h-11 min-w-[44px] rounded-2xl px-3 text-base font-semibold transition ${currentPage === page
+                          ? "bg-blue-500 text-white shadow-md"
+                          : "border border-[#d6c2a8] bg-white text-[#1a1a1a] hover:bg-[#efe4d2]"
+                          }`}
                       >
                         {page}
                       </button>
@@ -1071,11 +1091,10 @@ const StudentsManagement = () => {
 
                         <td className="px-3 py-4">
                           <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${
-                              student.IsActive
-                                ? "bg-green-100 text-green-700"
-                                : "bg-red-100 text-red-700"
-                            }`}
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${student.IsActive
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
+                              }`}
                           >
                             {student.IsActive ? "Active" : "Inactive"}
                           </span>
@@ -1121,11 +1140,10 @@ const StudentsManagement = () => {
                                   student.IsActive ? 0 : 1
                                 )
                               }
-                              className={`rounded-xl px-3 py-1.5 text-xs font-semibold ${
-                                student.IsActive
-                                  ? "bg-red-100 text-red-700 hover:bg-red-200"
-                                  : "bg-green-100 text-green-700 hover:bg-green-200"
-                              }`}
+                              className={`rounded-xl px-3 py-1.5 text-xs font-semibold ${student.IsActive
+                                ? "bg-red-100 text-red-700 hover:bg-red-200"
+                                : "bg-green-100 text-green-700 hover:bg-green-200"
+                                }`}
                             >
                               {student.IsActive ? "Deactivate" : "Activate"}
                             </button>
@@ -1181,11 +1199,10 @@ const StudentsManagement = () => {
                           <button
                             key={page}
                             onClick={() => goToPage(page)}
-                            className={`h-12 min-w-[48px] rounded-2xl px-4 text-lg font-semibold transition ${
-                              currentPage === page
-                                ? "bg-blue-500 text-white shadow-md"
-                                : "border border-[#d6c2a8] bg-white text-[#1a1a1a] hover:bg-[#efe4d2]"
-                            }`}
+                            className={`h-12 min-w-[48px] rounded-2xl px-4 text-lg font-semibold transition ${currentPage === page
+                              ? "bg-blue-500 text-white shadow-md"
+                              : "border border-[#d6c2a8] bg-white text-[#1a1a1a] hover:bg-[#efe4d2]"
+                              }`}
                           >
                             {page}
                           </button>
@@ -1283,6 +1300,8 @@ const StudentsManagement = () => {
                   name="rollNumber"
                   value={formData.rollNumber}
                   onChange={handleChange}
+                  inputMode="numeric"
+                  maxLength={15}
                   placeholder="Enter roll number"
                   className="w-full rounded-[20px] sm:rounded-[24px] border border-[#b9c7da] bg-[#dfe7f5] px-4 sm:px-5 py-3.5 sm:py-4 text-base sm:text-lg outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a]"
                 />
@@ -1311,8 +1330,8 @@ const StudentsManagement = () => {
                       ? "Updating..."
                       : "Saving..."
                     : editingStudentId
-                    ? "Update Student"
-                    : "Saved"}
+                      ? "Update Student"
+                      : "Saved"}
                 </button>
 
                 <button

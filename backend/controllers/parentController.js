@@ -53,7 +53,7 @@ const getParentDashboard = (req, res) => {
         const alreadyExists = studentsMap[row.StudentId].teachers.some(
           (teacher) =>
             teacher.teacherId === row.TeacherId &&
-            teacher.subjectId === row.SubjectId
+            teacher.subjectId === row.SubjectId,
         );
 
         if (!alreadyExists) {
@@ -76,42 +76,45 @@ const getParentDashboard = (req, res) => {
         });
       }
 
-      parentModel.getParentRecentFeedback(parentId, (recentErr, recentResults) => {
-        if (recentErr) {
-          return res.status(500).json({
-            success: false,
-            message: "Failed to fetch recent feedback",
-            error: recentErr.message,
+      parentModel.getParentRecentFeedback(
+        parentId,
+        (recentErr, recentResults) => {
+          if (recentErr) {
+            return res.status(500).json({
+              success: false,
+              message: "Failed to fetch recent feedback",
+              error: recentErr.message,
+            });
+          }
+
+          const stats = statsResults[0] || {};
+
+          const recentFeedback = recentResults.map((item) => ({
+            id: item.FeedbackId,
+            teacher: item.TeacherName,
+            subject: item.SubjectName,
+            rating: `${item.Rating}/5`,
+            date: item.SubmittedAt,
+            status:
+              item.TeacherResponse && item.TeacherResponse.trim() !== ""
+                ? "Responded"
+                : "Pending",
+          }));
+
+          return res.status(200).json({
+            success: true,
+            message: "Parent dashboard data fetched successfully",
+            data: {
+              parent: parentInfo,
+              students: Object.values(studentsMap),
+              totalFeedbackSubmitted: Number(stats.totalFeedbackSubmitted || 0),
+              pendingResponses: Number(stats.pendingResponses || 0),
+              respondedFeedback: Number(stats.respondedFeedback || 0),
+              recentFeedback,
+            },
           });
-        }
-
-        const stats = statsResults[0] || {};
-
-        const recentFeedback = recentResults.map((item) => ({
-          id: item.FeedbackId,
-          teacher: item.TeacherName,
-          subject: item.SubjectName,
-          rating: `${item.Rating}/5`,
-          date: item.SubmittedAt,
-          status:
-            item.TeacherResponse && item.TeacherResponse.trim() !== ""
-              ? "Responded"
-              : "Pending",
-        }));
-
-        return res.status(200).json({
-          success: true,
-          message: "Parent dashboard data fetched successfully",
-          data: {
-            parent: parentInfo,
-            students: Object.values(studentsMap),
-            totalFeedbackSubmitted: Number(stats.totalFeedbackSubmitted || 0),
-            pendingResponses: Number(stats.pendingResponses || 0),
-            respondedFeedback: Number(stats.respondedFeedback || 0),
-            recentFeedback,
-          },
-        });
-      });
+        },
+      );
     });
   });
 };
@@ -153,7 +156,7 @@ const getParentProfile = (req, res) => {
 const updateParentProfile = async (req, res) => {
   try {
     const { parentId } = req.params;
-    const { fullName, alternateMobile, address } = req.body;
+    const { fullName, email, alternateMobile, address } = req.body;
 
     if (!parentId) {
       return res.status(400).json({
@@ -162,10 +165,24 @@ const updateParentProfile = async (req, res) => {
       });
     }
 
-    if (!fullName) {
+    if (!fullName || !fullName.trim()) {
       return res.status(400).json({
         success: false,
         message: "Full name is required",
+      });
+    }
+
+    if (!email || !email.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid email address",
       });
     }
 
@@ -177,7 +194,8 @@ const updateParentProfile = async (req, res) => {
     }
 
     await parentModel.updateParentProfile(parentId, {
-      fullName,
+      fullName: fullName.trim(),
+      email: email.trim(),
       alternateMobile: alternateMobile || null,
       address: address || "",
     });
@@ -190,12 +208,19 @@ const updateParentProfile = async (req, res) => {
     if (error.code === "ER_DUP_ENTRY") {
       return res.status(409).json({
         success: false,
-        message: "Alternate mobile number already exists",
+        message: "Email or alternate mobile number already exists",
       });
     }
 
     if (error.message === "Mobile and alternate mobile cannot be same") {
       return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    if (error.message === "Parent profile not found") {
+      return res.status(404).json({
         success: false,
         message: error.message,
       });
@@ -207,8 +232,6 @@ const updateParentProfile = async (req, res) => {
     });
   }
 };
-
-
 const getParentFeedbackHistory = (req, res) => {
   const parentId = req.params.parentId;
 
@@ -347,7 +370,7 @@ const getParentDropdownData = (req, res) => {
             selectedSubjectId: subjectId || "",
           },
         });
-      }
+      },
     );
   });
 };
@@ -410,9 +433,9 @@ const getParentStudentDashboard = (req, res) => {
               recentFeedback,
             },
           });
-        }
+        },
       );
-    }
+    },
   );
 };
 

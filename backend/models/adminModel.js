@@ -155,7 +155,7 @@ const createParentUser = (userData, callback) => {
 const createParentProfile = (parentId, parentCode, address, callback) => {
   const query = `
     INSERT INTO user_Parents (ParentId, ParentCode, Address)
-    VALUES (?, ?)
+    VALUES (?, ?, ?)
   `;
 
   db.query(query, [parentId, parentCode, address || null], callback);

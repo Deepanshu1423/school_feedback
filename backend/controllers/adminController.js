@@ -14,6 +14,8 @@ const getDuplicateFieldMessage = (error) => {
   if (msg.includes("TeacherCode")) return "Teacher code already exists";
   if (msg.includes("AdminCode")) return "Admin code already exists";
   if (msg.includes("SubjectName")) return "Subject already exists";
+  if (msg.includes("UQ_user_Students_Class_Roll"))
+    return "This roll number already exists in selected class";
   if (msg.includes("UQ_master_Classes")) return "This class already exists for the selected section and academic year";
   if (msg.includes("UQ_user_ParentStudentMapping")) return "This parent-student mapping already exists";
   if (msg.includes("UQ_user_ParentStudentMapping_StudentId")) return "This student is already mapped to another parent";
@@ -29,10 +31,10 @@ const getDuplicateFieldMessage = (error) => {
 const createTeacher = (req, res) => {
   const { fullName, email, mobile, password } = req.body;
 
-  if (!fullName || !mobile || !password) {
+  if (!fullName || !mobile || !password || !email) {
     return res.status(400).json({
       success: false,
-      message: "fullName, mobile and password are required",
+      message: "fullName, mobile, email and password are required",
     });
   }
 
@@ -320,13 +322,14 @@ const createStudent = (req, res) => {
     },
     (err, result) => {
       if (err) {
-        return res.status(500).json({
+        const duplicateMessage = getDuplicateFieldMessage(err);
+
+        return res.status(duplicateMessage ? 409 : 500).json({
           success: false,
-          message: "Failed to create student",
-          error: err.message,
+          message: duplicateMessage || "Failed to create student",
+          error: duplicateMessage ? undefined : err.message,
         });
       }
-
       return res.status(201).json({
         success: true,
         message: "Student created successfully",
@@ -1329,10 +1332,12 @@ const updateStudent = (req, res) => {
     },
     (err, result) => {
       if (err) {
-        return res.status(500).json({
+        const duplicateMessage = getDuplicateFieldMessage(err);
+
+        return res.status(duplicateMessage ? 409 : 500).json({
           success: false,
-          message: "Failed to update student",
-          error: err.message,
+          message: duplicateMessage || "Failed to update student",
+          error: duplicateMessage ? undefined : err.message,
         });
       }
 

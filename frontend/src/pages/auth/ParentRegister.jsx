@@ -18,6 +18,7 @@ const ParentRegister = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
+  const [otpVerified, setOtpVerified] = useState(false);
 
   // =========================================
   // Form state
@@ -143,13 +144,15 @@ const ParentRegister = () => {
       if (response.data.success) {
         showMessage(
           response.data.message || "OTP sent successfully",
-          "success"
+          "success",
         );
+        setOtpVerified(false);
         setStep(2);
       }
     } catch (error) {
       showMessage(
-        error.response?.data?.message || "Failed to send OTP. Please try again."
+        error.response?.data?.message ||
+          "Failed to send OTP. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -185,15 +188,12 @@ const ParentRegister = () => {
       });
 
       if (response.data.success) {
-        showMessage(
-          response.data.message || "OTP verified successfully",
-          "success"
-        );
+        setOtpVerified(true);
+        setMessage("");
+        setMessageType("");
       }
     } catch (error) {
-      showMessage(
-        error.response?.data?.message || "OTP verification failed."
-      );
+      showMessage(error.response?.data?.message || "OTP verification failed.");
     } finally {
       setLoading(false);
     }
@@ -210,7 +210,7 @@ const ParentRegister = () => {
     setMessage("");
     setMessageType("");
 
-    if (!formData.otp) {
+    if (!otpVerified) {
       showMessage("Please verify OTP before registration");
       return;
     }
@@ -229,7 +229,7 @@ const ParentRegister = () => {
       if (response.data.success) {
         showMessage(
           response.data.message || "Parent registered successfully",
-          "success"
+          "success",
         );
 
         // Redirect to login after short delay
@@ -239,7 +239,8 @@ const ParentRegister = () => {
       }
     } catch (error) {
       showMessage(
-        error.response?.data?.message || "Registration failed. Please try again."
+        error.response?.data?.message ||
+          "Registration failed. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -266,15 +267,14 @@ const ParentRegister = () => {
       });
 
       if (response.data.success) {
+        setOtpVerified(false);
         showMessage(
           response.data.message || "OTP resent successfully",
-          "success"
+          "success",
         );
       }
     } catch (error) {
-      showMessage(
-        error.response?.data?.message || "Failed to resend OTP."
-      );
+      showMessage(error.response?.data?.message || "Failed to resend OTP.");
     } finally {
       setLoading(false);
     }
@@ -285,6 +285,7 @@ const ParentRegister = () => {
   // =========================================
   const handleBackToDetails = () => {
     setStep(1);
+    setOtpVerified(false);
     setMessage("");
     setMessageType("");
   };
@@ -421,22 +422,6 @@ const ParentRegister = () => {
                     />
                   </div>
 
-                  {/* Address - Optional */}
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-black">
-                      Address
-                    </label>
-                    <textarea
-                      name="address"
-                      value={formData.address}
-                      onChange={handleChange}
-                      placeholder="Enter address (optional)"
-                      rows={3}
-                      className="w-full resize-none rounded-[24px] border border-[#b9c7da] bg-[#dfe7f5] px-5 py-4 text-base outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a]"
-                    />
-                    <p className="mt-2 text-xs text-[#7b8794]">Optional</p>
-                  </div>
-
                   {/* Password */}
                   <div>
                     <label className="mb-2 block text-sm font-semibold text-black">
@@ -467,6 +452,22 @@ const ParentRegister = () => {
                     />
                   </div>
 
+                  {/* Address - Optional */}
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-black">
+                      Address
+                    </label>
+                    <textarea
+                      name="address"
+                      value={formData.address}
+                      onChange={handleChange}
+                      placeholder="Enter address (optional)"
+                      rows={3}
+                      className="w-full resize-none rounded-[24px] border border-[#b9c7da] bg-[#dfe7f5] px-5 py-4 text-base outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a]"
+                    />
+                    <p className="mt-2 text-xs text-[#7b8794]">Optional</p>
+                  </div>
+
                   <button
                     type="submit"
                     disabled={loading}
@@ -477,36 +478,47 @@ const ParentRegister = () => {
                 </form>
               ) : (
                 <form onSubmit={handleRegisterParent} className="space-y-5">
-                  {/* OTP */}
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-black">
-                      OTP
-                    </label>
-                    <input
-                      type="text"
-                      name="otp"
-                      value={formData.otp}
-                      onChange={handleChange}
-                      placeholder="Enter OTP"
-                      className="w-full rounded-[24px] border border-[#b9c7da] bg-[#dfe7f5] px-5 py-4 text-base outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a]"
-                    />
-                    <p className="mt-2 text-xs text-[#7b8794]">
-                      OTP sent to {formData.mobile}
-                    </p>
-                  </div>
+                  {!otpVerified && (
+                    <>
+                      {/* OTP */}
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold text-black">
+                          OTP
+                        </label>
+                        <input
+                          type="text"
+                          name="otp"
+                          value={formData.otp}
+                          onChange={handleChange}
+                          placeholder="Enter OTP"
+                          className="w-full rounded-[24px] border border-[#b9c7da] bg-[#dfe7f5] px-5 py-4 text-base outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a]"
+                        />
+                        <p className="mt-2 text-xs text-[#7b8794]">
+                          OTP sent to {formData.mobile}
+                        </p>
+                      </div>
 
-                  <button
-                    type="button"
-                    onClick={handleVerifyOtp}
-                    disabled={loading}
-                    className="w-full rounded-[24px] bg-black py-4 text-base font-semibold text-white shadow-md transition hover:opacity-90 disabled:opacity-70"
-                  >
-                    {loading ? "Verifying..." : "Verify OTP"}
-                  </button>
+                      <button
+                        type="button"
+                        onClick={handleVerifyOtp}
+                        disabled={loading}
+                        className="w-full rounded-[24px] bg-black py-4 text-base font-semibold text-white shadow-md transition hover:opacity-90 disabled:opacity-70"
+                      >
+                        {loading ? "Verifying..." : "Verify OTP"}
+                      </button>
+                    </>
+                  )}
+
+                  {otpVerified && (
+                    <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">
+                      OTP verified successfully. You can now complete
+                      registration.
+                    </div>
+                  )}
 
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || !otpVerified}
                     className="w-full rounded-[24px] bg-[#b79257] py-4 text-base font-semibold text-black shadow-md transition hover:bg-[#a57f42] disabled:opacity-70"
                   >
                     {loading ? "Registering..." : "Complete Registration"}
@@ -536,7 +548,10 @@ const ParentRegister = () => {
 
               <p className="mt-6 text-center text-sm text-[#6b7280]">
                 Already have an account?{" "}
-                <Link to="/" className="font-semibold text-[#9b7440] hover:underline">
+                <Link
+                  to="/"
+                  className="font-semibold text-[#9b7440] hover:underline"
+                >
                   Login
                 </Link>
               </p>

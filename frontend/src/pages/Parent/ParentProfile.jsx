@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../api/axios";
 
@@ -6,26 +6,43 @@ const ParentProfile = () => {
   const navigate = useNavigate();
   const { parentId } = useParams();
 
+  // =========================================
+  // Main page states
+  // =========================================
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [profile, setProfile] = useState(null);
 
+  // =========================================
+  // Mobile header menu states
+  // On mobile, Edit Profile / Back / Logout are shown inside one menu
+  // =========================================
+  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
+  const headerMenuRef = useRef(null);
+
+  // =========================================
+  // Edit profile modal states
+  // =========================================
   const [showEditModal, setShowEditModal] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
 
+  // =========================================
+  // Mobile change OTP states
+  // Mobile number still updates through OTP verification
+  // =========================================
   const [mobileSending, setMobileSending] = useState(false);
   const [mobileVerifying, setMobileVerifying] = useState(false);
   const [mobileOtpSent, setMobileOtpSent] = useState(false);
   const [mobileMessage, setMobileMessage] = useState("");
   const [mobileError, setMobileError] = useState("");
+  
 
-  const [emailSending, setEmailSending] = useState(false);
-  const [emailVerifying, setEmailVerifying] = useState(false);
-  const [emailOtpSent, setEmailOtpSent] = useState(false);
-  const [emailMessage, setEmailMessage] = useState("");
-  const [emailError, setEmailError] = useState("");
-
+  // =========================================
+  // Form data for edit modal
+  // Email updates directly through Save Changes
+  // Mobile updates separately through OTP
+  // =========================================
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -34,10 +51,32 @@ const ParentProfile = () => {
     address: "",
     newMobile: "",
     mobileOtp: "",
-    newEmail: "",
-    emailOtp: "",
   });
 
+  // =========================================
+  // Close mobile header menu on outside click
+  // =========================================
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        headerMenuRef.current &&
+        !headerMenuRef.current.contains(event.target)
+      ) {
+        setIsHeaderMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // =========================================
+  // Fetch parent profile data from backend
+  // This fills the profile card and edit form values
+  // =========================================
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -58,8 +97,6 @@ const ParentProfile = () => {
           address: profileData?.Address || "",
           newMobile: "",
           mobileOtp: "",
-          newEmail: "",
-          emailOtp: "",
         });
       } catch (error) {
         setError(
@@ -75,64 +112,22 @@ const ParentProfile = () => {
     }
   }, [parentId]);
 
-  const formatDate = (dateValue) => {
-    if (!dateValue) return "N/A";
+  
 
-    const date = new Date(dateValue);
-    if (Number.isNaN(date.getTime())) return "N/A";
+  
 
-    return date.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
-
-  const formatTime = (dateValue) => {
-    if (!dateValue) return "";
-
-    const date = new Date(dateValue);
-    if (Number.isNaN(date.getTime())) return "";
-
-    return date
-      .toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      })
-      .toLowerCase();
-  };
-
-  const getDayLabel = (dateValue) => {
-    if (!dateValue) return "";
-
-    const inputDate = new Date(dateValue);
-    const today = new Date();
-    const yesterday = new Date();
-
-    today.setHours(0, 0, 0, 0);
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-
-    const compareDate = new Date(inputDate);
-    compareDate.setHours(0, 0, 0, 0);
-
-    if (compareDate.getTime() === today.getTime()) return "Today";
-    if (compareDate.getTime() === yesterday.getTime()) return "Yesterday";
-    return "";
-  };
-
+  // =========================================
+  // Open edit profile modal
+  // This resets old messages and fills form with latest profile data
+  // =========================================
   const openEditModal = () => {
+    setIsHeaderMenuOpen(false);
     setMessage("");
     setError("");
 
     setMobileMessage("");
     setMobileError("");
     setMobileOtpSent(false);
-
-    setEmailMessage("");
-    setEmailError("");
-    setEmailOtpSent(false);
 
     setFormData({
       fullName: profile?.FullName || "",
@@ -142,13 +137,15 @@ const ParentProfile = () => {
       address: profile?.Address || "",
       newMobile: "",
       mobileOtp: "",
-      newEmail: "",
-      emailOtp: "",
     });
 
     setShowEditModal(true);
   };
 
+  // =========================================
+  // Close edit profile modal
+  // This also clears modal messages
+  // =========================================
   const closeEditModal = () => {
     setShowEditModal(false);
     setMessage("");
@@ -157,16 +154,24 @@ const ParentProfile = () => {
     setMobileMessage("");
     setMobileError("");
     setMobileOtpSent(false);
-
-    setEmailMessage("");
-    setEmailError("");
-    setEmailOtpSent(false);
   };
 
-    // =========================================
+  // =========================================
+  // Header navigation helper
+  // Used by mobile dropdown menu
+  // =========================================
+  const handleHeaderNavigate = (path) => {
+    setIsHeaderMenuOpen(false);
+    navigate(path);
+  };
+
+  // =========================================
   // Logout handler
+  // Clears login and selected child data from localStorage
   // =========================================
   const handleLogout = () => {
+    setIsHeaderMenuOpen(false);
+
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("selectedStudentId");
@@ -177,6 +182,11 @@ const ParentProfile = () => {
     navigate("/");
   };
 
+  // =========================================
+  // Common input handler
+  // Mobile-related fields allow digits only
+  // Other fields like fullName, email, address allow normal text
+  // =========================================
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -184,14 +194,15 @@ const ParentProfile = () => {
       name === "mobile" ||
       name === "alternateMobile" ||
       name === "newMobile" ||
-      name === "mobileOtp" ||
-      name === "emailOtp"
+      name === "mobileOtp"
     ) {
       const onlyDigits = value.replace(/\D/g, "").slice(0, 10);
+
       setFormData((prev) => ({
         ...prev,
         [name]: onlyDigits,
       }));
+
       return;
     }
 
@@ -201,6 +212,10 @@ const ParentProfile = () => {
     }));
   };
 
+  // =========================================
+  // Send OTP for mobile number change
+  // Mobile number change is still protected by OTP
+  // =========================================
   const handleSendMobileOtp = async () => {
     setMobileMessage("");
     setMobileError("");
@@ -216,7 +231,9 @@ const ParentProfile = () => {
     }
 
     if (formData.newMobile === formData.mobile) {
-      setMobileError("New mobile number cannot be same as current mobile number");
+      setMobileError(
+        "New mobile number cannot be same as current mobile number"
+      );
       return;
     }
 
@@ -224,7 +241,9 @@ const ParentProfile = () => {
       formData.alternateMobile &&
       formData.newMobile === formData.alternateMobile
     ) {
-      setMobileError("New mobile number cannot be same as alternate mobile number");
+      setMobileError(
+        "New mobile number cannot be same as alternate mobile number"
+      );
       return;
     }
 
@@ -251,6 +270,9 @@ const ParentProfile = () => {
     }
   };
 
+  // =========================================
+  // Verify OTP and update mobile number
+  // =========================================
   const handleVerifyMobileOtp = async () => {
     setMobileMessage("");
     setMobileError("");
@@ -303,101 +325,11 @@ const ParentProfile = () => {
     }
   };
 
-  const handleSendEmailOtp = async () => {
-    setEmailMessage("");
-    setEmailError("");
-
-    if (!formData.newEmail) {
-      setEmailError("Please enter new email");
-      return;
-    }
-
-    if (!/^\S+@\S+\.\S+$/.test(formData.newEmail)) {
-      setEmailError("Please enter a valid email address");
-      return;
-    }
-
-    if (
-      (formData.newEmail || "").toLowerCase() ===
-      (formData.email || "").toLowerCase()
-    ) {
-      setEmailError("New email cannot be same as current email");
-      return;
-    }
-
-    try {
-      setEmailSending(true);
-
-      const response = await api.post(
-        `/auth/profile/${parentId}/change-email/send-otp`,
-        {
-          newEmail: formData.newEmail,
-        }
-      );
-
-      if (response.data.success) {
-        setEmailOtpSent(true);
-        setEmailMessage(
-          response.data.message || "OTP sent successfully to current mobile number"
-        );
-      }
-    } catch (error) {
-      setEmailError(error.response?.data?.message || "Failed to send OTP.");
-    } finally {
-      setEmailSending(false);
-    }
-  };
-
-  const handleVerifyEmailOtp = async () => {
-    setEmailMessage("");
-    setEmailError("");
-
-    if (!formData.newEmail) {
-      setEmailError("Please enter new email");
-      return;
-    }
-
-    if (!formData.emailOtp) {
-      setEmailError("Please enter OTP");
-      return;
-    }
-
-    try {
-      setEmailVerifying(true);
-
-      const response = await api.post(
-        `/auth/profile/${parentId}/change-email/verify-otp`,
-        {
-          newEmail: formData.newEmail,
-          otp: formData.emailOtp,
-        }
-      );
-
-      if (response.data.success) {
-        const updatedEmail = response.data?.data?.email || formData.newEmail;
-
-        setProfile((prev) => ({
-          ...prev,
-          Email: updatedEmail,
-        }));
-
-        setFormData((prev) => ({
-          ...prev,
-          email: updatedEmail,
-          newEmail: "",
-          emailOtp: "",
-        }));
-
-        setEmailOtpSent(false);
-        setEmailMessage(response.data.message || "Email updated successfully");
-      }
-    } catch (error) {
-      setEmailError(error.response?.data?.message || "Failed to verify OTP.");
-    } finally {
-      setEmailVerifying(false);
-    }
-  };
-
+  // =========================================
+  // Save profile details
+  // FullName, Email, AlternateMobile and Address update directly
+  // Mobile number updates separately through OTP flow
+  // =========================================
   const handleSaveProfile = async (e) => {
     e.preventDefault();
 
@@ -406,6 +338,16 @@ const ParentProfile = () => {
 
     if (!formData.fullName.trim()) {
       setError("Full name is required");
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      setError("Email is required");
+      return;
+    }
+
+    if (!/^\S+@\S+\.\S+$/.test(formData.email.trim())) {
+      setError("Please enter a valid email address");
       return;
     }
 
@@ -429,7 +371,8 @@ const ParentProfile = () => {
       setSaveLoading(true);
 
       const response = await api.put(`/parent/profile/${parentId}`, {
-        fullName: formData.fullName,
+        fullName: formData.fullName.trim(),
+        email: formData.email.trim(),
         alternateMobile: formData.alternateMobile,
         address: formData.address,
       });
@@ -437,7 +380,8 @@ const ParentProfile = () => {
       if (response.data.success) {
         setProfile((prev) => ({
           ...prev,
-          FullName: formData.fullName,
+          FullName: formData.fullName.trim(),
+          Email: formData.email.trim(),
           AlternateMobile: formData.alternateMobile || null,
           Address: formData.address || null,
         }));
@@ -466,27 +410,82 @@ const ParentProfile = () => {
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={openEditModal}
-                className="rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
+            {/* =========================================
+                Header buttons
+                Mobile: menu icon
+                Desktop: normal action buttons
+               ========================================= */}
+            <div className="flex w-full items-center justify-start lg:w-auto lg:justify-end">
+              {/* Mobile header menu */}
+              <div
+                ref={headerMenuRef}
+                className="relative flex flex-shrink-0 justify-start lg:hidden"
               >
-                Edit Profile
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setIsHeaderMenuOpen((prev) => !prev)}
+                  className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#b08d57] font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
+                  aria-label="Open parent profile menu"
+                >
+                  <span className="text-2xl leading-none">
+                    {isHeaderMenuOpen ? "×" : "☰"}
+                  </span>
+                </button>
 
-              <button
-                onClick={() => navigate(`/parent/dashboard/${parentId}`)}
-                className="rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
-              >
-                Back to Dashboard
-              </button>
+                {isHeaderMenuOpen && (
+                  <div className="absolute left-0 top-full z-40 mt-2 w-56 overflow-hidden rounded-2xl border border-[#d6c2a8] bg-[#fffaf3] shadow-xl">
+                    <button
+                      type="button"
+                      onClick={openEditModal}
+                      className="block w-full px-4 py-3 text-left text-sm font-semibold text-[#1a1a1a] transition hover:bg-[#f1e7d7]"
+                    >
+                      Edit Profile
+                    </button>
 
-              <button
-                onClick={handleLogout}
-                className="rounded-xl bg-[#f1e7d7] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#e5d7c1]"
-              >
-                Logout
-              </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleHeaderNavigate(`/parent/dashboard/${parentId}`)
+                      }
+                      className="block w-full px-4 py-3 text-left text-sm font-semibold text-[#1a1a1a] transition hover:bg-[#f1e7d7]"
+                    >
+                      Back to Dashboard
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="block w-full border-t border-[#eadfcf] px-4 py-3 text-left text-sm font-semibold text-red-700 transition hover:bg-red-50"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Desktop header buttons */}
+              <div className="hidden flex-wrap gap-3 lg:flex">
+                <button
+                  onClick={openEditModal}
+                  className="rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
+                >
+                  Edit Profile
+                </button>
+
+                <button
+                  onClick={() => navigate(`/parent/dashboard/${parentId}`)}
+                  className="rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
+                >
+                  Back to Dashboard
+                </button>
+
+                <button
+                  onClick={handleLogout}
+                  className="rounded-xl bg-[#f1e7d7] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#e5d7c1]"
+                >
+                  Logout
+                </button>
+              </div>
             </div>
           </div>
         </header>
@@ -526,16 +525,7 @@ const ParentProfile = () => {
                 </div>
               </section>
 
-              <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="rounded-2xl border border-[#d6c2a8] bg-[#fffaf3] p-5 shadow-sm">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8b7355]">
-                    Parent ID
-                  </p>
-                  <p className="mt-3 text-xl font-bold text-[#1a1a1a]">
-                    {profile.ParentId || "N/A"}
-                  </p>
-                </div>
-
+              <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
                 <div className="rounded-2xl border border-[#d6c2a8] bg-[#fffaf3] p-5 shadow-sm">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8b7355]">
                     Parent Code
@@ -551,10 +541,11 @@ const ParentProfile = () => {
                   </p>
                   <div className="mt-3">
                     <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${profile.IsActive
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-700"
-                        }`}
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        profile.IsActive
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
                     >
                       {profile.IsActive ? "Active" : "Inactive"}
                     </span>
@@ -618,8 +609,6 @@ const ParentProfile = () => {
                       {profile.Address || "N/A"}
                     </p>
                   </div>
-
-                  
                 </div>
               </section>
             </>
@@ -628,30 +617,30 @@ const ParentProfile = () => {
       </div>
 
       {showEditModal && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/45 px-3 sm:px-4 py-4 sm:py-6 overflow-y-auto">
-          <div className="relative w-full max-w-[640px] rounded-[24px] sm:rounded-[30px] border border-[#d8c3a0] bg-white shadow-2xl overflow-hidden max-h-[92vh]">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/45 px-3 py-4 sm:items-center sm:px-4 sm:py-6">
+          <div className="relative max-h-[92vh] w-full max-w-[640px] overflow-hidden rounded-[24px] border border-[#d8c3a0] bg-white shadow-2xl sm:rounded-[30px]">
             <button
               onClick={closeEditModal}
-              className="absolute right-3 top-3 sm:right-4 sm:top-4 z-10 flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-white text-black shadow-md hover:bg-[#f6efe4] text-lg sm:text-xl"
+              className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white text-lg text-black shadow-md hover:bg-[#f6efe4] sm:right-4 sm:top-4 sm:h-10 sm:w-10 sm:text-xl"
             >
               ×
             </button>
 
-            <div className="bg-gradient-to-r from-black via-[#1a1410] to-[#a67c3d] px-4 sm:px-8 py-4 sm:py-6">
-              <h2 className="text-2xl sm:text-3xl font-bold text-white">
+            <div className="bg-gradient-to-r from-black via-[#1a1410] to-[#a67c3d] px-4 py-4 sm:px-8 sm:py-6">
+              <h2 className="text-2xl font-bold text-white sm:text-3xl">
                 Edit Profile
               </h2>
-              <p className="mt-1 sm:mt-2 text-sm sm:text-base text-[#ece1cf]">
+              <p className="mt-1 text-sm text-[#ece1cf] sm:mt-2 sm:text-base">
                 Manage all profile details from one place
               </p>
             </div>
 
             <form
               onSubmit={handleSaveProfile}
-              className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto max-h-[calc(92vh-110px)] sm:max-h-[calc(92vh-125px)]"
+              className="max-h-[calc(92vh-110px)] space-y-4 overflow-y-auto p-4 sm:max-h-[calc(92vh-125px)] sm:space-y-5 sm:p-6"
             >
               <div>
-                <label className="block text-sm font-semibold text-black mb-2">
+                <label className="mb-2 block text-sm font-semibold text-black">
                   Full Name
                 </label>
                 <input
@@ -660,93 +649,34 @@ const ParentProfile = () => {
                   value={formData.fullName}
                   onChange={handleChange}
                   placeholder="Enter full name"
-                  className="w-full rounded-[18px] sm:rounded-[24px] border border-[#b9c7da] bg-[#dfe7f5] px-4 sm:px-5 py-3 sm:py-4 text-base sm:text-lg outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a]"
+                  className="w-full rounded-[18px] border border-[#b9c7da] bg-[#dfe7f5] px-4 py-3 text-base outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a] sm:rounded-[24px] sm:px-5 sm:py-4 sm:text-lg"
                 />
               </div>
 
-              <div className="rounded-2xl border border-[#d6c2a8] bg-[#f7f1e8] p-3 sm:p-4 space-y-3 sm:space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-black mb-2">
-                    Current Email
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    readOnly
-                    className="w-full cursor-not-allowed rounded-[18px] sm:rounded-[20px] border border-[#d7dce6] bg-[#edf1f8] px-4 sm:px-5 py-3 sm:py-4 text-base sm:text-lg text-[#6b7280] outline-none"
-                  />
-                </div>
+              {/* Email updates directly through Save Changes */}
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-black">
+                  Email
+                </label>
 
-                <div>
-                  <label className="block text-sm font-semibold text-black mb-2">
-                    New Email
-                  </label>
-                  <div className="flex flex-col gap-3 sm:flex-row">
-                    <input
-                      type="email"
-                      name="newEmail"
-                      value={formData.newEmail}
-                      onChange={handleChange}
-                      placeholder="Enter new email"
-                      className="w-full rounded-[18px] sm:rounded-[20px] border border-[#b9c7da] bg-[#dfe7f5] px-4 sm:px-5 py-3 sm:py-4 text-base sm:text-lg outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a]"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleSendEmailOtp}
-                      disabled={emailSending}
-                      className="w-full sm:w-auto sm:min-w-[120px] rounded-[18px] sm:rounded-[20px] bg-[#b79257] px-4 sm:px-5 py-3 sm:py-4 font-semibold text-black shadow-md transition hover:bg-[#a57f42] disabled:opacity-70"
-                    >
-                      {emailSending ? "Sending..." : "Send OTP"}
-                    </button>
-                  </div>
-                  <p className="mt-2 text-xs text-[#8b7355]">
-                    OTP will be sent to your current mobile number for email verification.
-                  </p>
-                </div>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="Enter email"
+                  className="w-full rounded-[18px] border border-[#b9c7da] bg-[#dfe7f5] px-4 py-3 text-base outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a] sm:rounded-[24px] sm:px-5 sm:py-4 sm:text-lg"
+                />
 
-                {emailOtpSent && (
-                  <div>
-                    <label className="block text-sm font-semibold text-black mb-2">
-                      OTP
-                    </label>
-                    <div className="flex flex-col gap-3 sm:flex-row">
-                      <input
-                        type="text"
-                        name="emailOtp"
-                        value={formData.emailOtp}
-                        onChange={handleChange}
-                        placeholder="Enter OTP"
-                        className="w-full rounded-[18px] sm:rounded-[20px] border border-[#b9c7da] bg-[#dfe7f5] px-4 sm:px-5 py-3 sm:py-4 text-base sm:text-lg outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a]"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleVerifyEmailOtp}
-                        disabled={emailVerifying}
-                        className="w-full sm:w-auto sm:min-w-[140px] rounded-[18px] sm:rounded-[20px] bg-black px-4 sm:px-5 py-3 sm:py-4 font-semibold text-white shadow-md transition hover:opacity-90 disabled:opacity-70"
-                      >
-                        {emailVerifying ? "Verifying..." : "Verify & Update"}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {emailMessage && (
-                  <div className="rounded-2xl border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-700">
-                    {emailMessage}
-                  </div>
-                )}
-
-                {emailError && (
-                  <div className="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    {emailError}
-                  </div>
-                )}
+                <p className="mt-2 text-xs text-[#8b7355]">
+                  Email will be updated directly after clicking Save Changes.
+                </p>
               </div>
 
-              <div className="rounded-2xl border border-[#d6c2a8] bg-[#f7f1e8] p-3 sm:p-4 space-y-3 sm:space-y-4">
+              {/* Mobile number updates through OTP */}
+              <div className="space-y-3 rounded-2xl border border-[#d6c2a8] bg-[#f7f1e8] p-3 sm:space-y-4 sm:p-4">
                 <div>
-                  <label className="block text-sm font-semibold text-black mb-2">
+                  <label className="mb-2 block text-sm font-semibold text-black">
                     Current Mobile
                   </label>
                   <input
@@ -754,14 +684,15 @@ const ParentProfile = () => {
                     name="mobile"
                     value={formData.mobile}
                     readOnly
-                    className="w-full cursor-not-allowed rounded-[18px] sm:rounded-[20px] border border-[#d7dce6] bg-[#edf1f8] px-4 sm:px-5 py-3 sm:py-4 text-base sm:text-lg text-[#6b7280] outline-none"
+                    className="w-full cursor-not-allowed rounded-[18px] border border-[#d7dce6] bg-[#edf1f8] px-4 py-3 text-base text-[#6b7280] outline-none sm:rounded-[20px] sm:px-5 sm:py-4 sm:text-lg"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-black mb-2">
+                  <label className="mb-2 block text-sm font-semibold text-black">
                     New Mobile
                   </label>
+
                   <div className="flex flex-col gap-3 sm:flex-row">
                     <input
                       type="text"
@@ -769,13 +700,14 @@ const ParentProfile = () => {
                       value={formData.newMobile}
                       onChange={handleChange}
                       placeholder="Enter new mobile number"
-                      className="w-full rounded-[18px] sm:rounded-[20px] border border-[#b9c7da] bg-[#dfe7f5] px-4 sm:px-5 py-3 sm:py-4 text-base sm:text-lg outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a]"
+                      className="w-full rounded-[18px] border border-[#b9c7da] bg-[#dfe7f5] px-4 py-3 text-base outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a] sm:rounded-[20px] sm:px-5 sm:py-4 sm:text-lg"
                     />
+
                     <button
                       type="button"
                       onClick={handleSendMobileOtp}
                       disabled={mobileSending}
-                      className="w-full sm:w-auto sm:min-w-[120px] rounded-[18px] sm:rounded-[20px] bg-[#b79257] px-4 sm:px-5 py-3 sm:py-4 font-semibold text-black shadow-md transition hover:bg-[#a57f42] disabled:opacity-70"
+                      className="w-full rounded-[18px] bg-[#b79257] px-4 py-3 font-semibold text-black shadow-md transition hover:bg-[#a57f42] disabled:opacity-70 sm:w-auto sm:min-w-[120px] sm:rounded-[20px] sm:px-5 sm:py-4"
                     >
                       {mobileSending ? "Sending..." : "Send OTP"}
                     </button>
@@ -784,9 +716,10 @@ const ParentProfile = () => {
 
                 {mobileOtpSent && (
                   <div>
-                    <label className="block text-sm font-semibold text-black mb-2">
+                    <label className="mb-2 block text-sm font-semibold text-black">
                       OTP
                     </label>
+
                     <div className="flex flex-col gap-3 sm:flex-row">
                       <input
                         type="text"
@@ -794,13 +727,14 @@ const ParentProfile = () => {
                         value={formData.mobileOtp}
                         onChange={handleChange}
                         placeholder="Enter OTP"
-                        className="w-full rounded-[18px] sm:rounded-[20px] border border-[#b9c7da] bg-[#dfe7f5] px-4 sm:px-5 py-3 sm:py-4 text-base sm:text-lg outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a]"
+                        className="w-full rounded-[18px] border border-[#b9c7da] bg-[#dfe7f5] px-4 py-3 text-base outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a] sm:rounded-[20px] sm:px-5 sm:py-4 sm:text-lg"
                       />
+
                       <button
                         type="button"
                         onClick={handleVerifyMobileOtp}
                         disabled={mobileVerifying}
-                        className="w-full sm:w-auto sm:min-w-[140px] rounded-[18px] sm:rounded-[20px] bg-black px-4 sm:px-5 py-3 sm:py-4 font-semibold text-white shadow-md transition hover:opacity-90 disabled:opacity-70"
+                        className="w-full rounded-[18px] bg-black px-4 py-3 font-semibold text-white shadow-md transition hover:opacity-90 disabled:opacity-70 sm:w-auto sm:min-w-[140px] sm:rounded-[20px] sm:px-5 sm:py-4"
                       >
                         {mobileVerifying ? "Verifying..." : "Verify & Update"}
                       </button>
@@ -821,10 +755,8 @@ const ParentProfile = () => {
                 )}
               </div>
 
-
-              
               <div>
-                <label className="block text-sm font-semibold text-black mb-2">
+                <label className="mb-2 block text-sm font-semibold text-black">
                   Alternate Mobile
                 </label>
                 <input
@@ -833,7 +765,7 @@ const ParentProfile = () => {
                   value={formData.alternateMobile}
                   onChange={handleChange}
                   placeholder="Enter alternate mobile number"
-                  className="w-full rounded-[18px] sm:rounded-[24px] border border-[#b9c7da] bg-[#dfe7f5] px-4 sm:px-5 py-3 sm:py-4 text-base sm:text-lg outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a]"
+                  className="w-full rounded-[18px] border border-[#b9c7da] bg-[#dfe7f5] px-4 py-3 text-base outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a] sm:rounded-[24px] sm:px-5 sm:py-4 sm:text-lg"
                 />
               </div>
 
@@ -847,10 +779,9 @@ const ParentProfile = () => {
                   onChange={handleChange}
                   placeholder="Enter address"
                   rows={3}
-                  className="w-full rounded-[18px] sm:rounded-[24px] border border-[#b9c7da] bg-[#dfe7f5] px-4 sm:px-5 py-3 sm:py-4 text-base sm:text-lg outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a] resize-none"
+                  className="w-full resize-none rounded-[18px] border border-[#b9c7da] bg-[#dfe7f5] px-4 py-3 text-base outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a] sm:rounded-[24px] sm:px-5 sm:py-4 sm:text-lg"
                 />
               </div>
-
 
               {error && (
                 <div className="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -858,11 +789,11 @@ const ParentProfile = () => {
                 </div>
               )}
 
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <div className="flex flex-col gap-3 pt-2 sm:flex-row">
                 <button
                   type="submit"
                   disabled={saveLoading}
-                  className="w-full flex-1 rounded-[20px] sm:rounded-[22px] bg-[#b79257] hover:bg-[#a57f42] disabled:opacity-70 text-black font-semibold py-3.5 sm:py-4 text-base sm:text-lg shadow-md transition"
+                  className="w-full flex-1 rounded-[20px] bg-[#b79257] py-3.5 text-base font-semibold text-black shadow-md transition hover:bg-[#a57f42] disabled:opacity-70 sm:rounded-[22px] sm:py-4 sm:text-lg"
                 >
                   {saveLoading ? "Saving..." : "Save Changes"}
                 </button>
@@ -870,7 +801,7 @@ const ParentProfile = () => {
                 <button
                   type="button"
                   onClick={closeEditModal}
-                  className="w-full sm:w-auto rounded-[20px] sm:rounded-[22px] bg-black text-white px-6 py-3.5 sm:py-4 text-base font-semibold"
+                  className="w-full rounded-[20px] bg-black px-6 py-3.5 text-base font-semibold text-white sm:w-auto sm:rounded-[22px] sm:py-4"
                 >
                   Cancel
                 </button>

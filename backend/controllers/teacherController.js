@@ -38,34 +38,75 @@ const respondToFeedback = (req, res) => {
     });
   }
 
-  teacherModel.addTeacherResponse(
+  const cleanResponse = teacherResponse.trim();
+
+  if (!cleanResponse) {
+    return res.status(400).json({
+      success: false,
+      message: "Teacher response cannot be empty",
+    });
+  }
+
+  teacherModel.getFeedbackForResponse(
     feedbackId,
     teacherId,
-    teacherResponse,
-    (err, result) => {
-      if (err) {
+    (findErr, rows) => {
+      if (findErr) {
         return res.status(500).json({
           success: false,
-          message: "Failed to add teacher response",
-          error: err.message,
+          message: "Failed to validate feedback record",
+          error: findErr.message,
         });
       }
 
-      if (result.affectedRows === 0) {
+      if (rows.length === 0) {
         return res.status(404).json({
           success: false,
           message: "Feedback not found for this teacher",
         });
       }
 
-      return res.status(200).json({
-        success: true,
-        message: "Teacher response submitted successfully",
-      });
-    }
+      const existingFeedback = rows[0];
+
+      if (
+        existingFeedback.TeacherResponse &&
+        existingFeedback.TeacherResponse.trim() !== ""
+      ) {
+        return res.status(409).json({
+          success: false,
+          message: "Response already submitted. Editing is not allowed.",
+        });
+      }
+
+      teacherModel.addTeacherResponse(
+        feedbackId,
+        teacherId,
+        cleanResponse,
+        (err, result) => {
+          if (err) {
+            return res.status(500).json({
+              success: false,
+              message: "Failed to add teacher response",
+              error: err.message,
+            });
+          }
+
+          if (result.affectedRows === 0) {
+            return res.status(409).json({
+              success: false,
+              message: "Response already submitted. Editing is not allowed.",
+            });
+          }
+
+          return res.status(200).json({
+            success: true,
+            message: "Teacher response submitted successfully",
+          });
+        },
+      );
+    },
   );
 };
-
 const getTeacherDashboardSummary = (req, res) => {
   const teacherId = req.params.teacherId;
 
@@ -76,51 +117,61 @@ const getTeacherDashboardSummary = (req, res) => {
     });
   }
 
-  teacherModel.getTeacherDashboardSummary(teacherId, (summaryErr, summaryResults) => {
-    if (summaryErr) {
-      return res.status(500).json({
-        success: false,
-        message: "Failed to fetch dashboard summary",
-        error: summaryErr.message,
-      });
-    }
-
-    teacherModel.getTeacherSubjectWiseSummary(teacherId, (subjectErr, subjectResults) => {
-      if (subjectErr) {
+  teacherModel.getTeacherDashboardSummary(
+    teacherId,
+    (summaryErr, summaryResults) => {
+      if (summaryErr) {
         return res.status(500).json({
           success: false,
-          message: "Failed to fetch subject-wise summary",
-          error: subjectErr.message,
+          message: "Failed to fetch dashboard summary",
+          error: summaryErr.message,
         });
       }
 
-      teacherModel.getTeacherRecentComments(teacherId, (commentsErr, commentsResults) => {
-        if (commentsErr) {
-          return res.status(500).json({
-            success: false,
-            message: "Failed to fetch recent comments",
-            error: commentsErr.message,
-          });
-        }
+      teacherModel.getTeacherSubjectWiseSummary(
+        teacherId,
+        (subjectErr, subjectResults) => {
+          if (subjectErr) {
+            return res.status(500).json({
+              success: false,
+              message: "Failed to fetch subject-wise summary",
+              error: subjectErr.message,
+            });
+          }
 
-        return res.status(200).json({
-          success: true,
-          message: "Teacher dashboard summary fetched successfully",
-          data: {
-            overview: summaryResults.length > 0
-              ? summaryResults[0]
-              : {
-                  TeacherId: Number(teacherId),
-                  AverageRating: 0,
-                  TotalFeedbacks: 0,
+          teacherModel.getTeacherRecentComments(
+            teacherId,
+            (commentsErr, commentsResults) => {
+              if (commentsErr) {
+                return res.status(500).json({
+                  success: false,
+                  message: "Failed to fetch recent comments",
+                  error: commentsErr.message,
+                });
+              }
+
+              return res.status(200).json({
+                success: true,
+                message: "Teacher dashboard summary fetched successfully",
+                data: {
+                  overview:
+                    summaryResults.length > 0
+                      ? summaryResults[0]
+                      : {
+                          TeacherId: Number(teacherId),
+                          AverageRating: 0,
+                          TotalFeedbacks: 0,
+                        },
+                  subjectWiseSummary: subjectResults,
+                  recentComments: commentsResults,
                 },
-            subjectWiseSummary: subjectResults,
-            recentComments: commentsResults,
-          },
-        });
-      });
-    });
-  });
+              });
+            },
+          );
+        },
+      );
+    },
+  );
 };
 
 module.exports = {

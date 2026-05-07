@@ -52,7 +52,13 @@ const ParentsManagement = () => {
   // =========================================
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, parentCodeSortOrder, nameSortOrder, dateSortOrder]);
+  }, [
+    searchTerm,
+    statusFilter,
+    parentCodeSortOrder,
+    nameSortOrder,
+    dateSortOrder,
+  ]);
 
   // =========================================
   // Get auth headers for protected API calls
@@ -132,6 +138,7 @@ const ParentsManagement = () => {
       address: "",
       password: "",
     });
+
     setEditingParentId(null);
     setMessage("");
     setError("");
@@ -147,9 +154,22 @@ const ParentsManagement = () => {
 
   // =========================================
   // Open create modal
+  // Create mode me form blank rahega
   // =========================================
   const openCreateModal = () => {
-    resetForm();
+    setEditingParentId(null);
+
+    setFormData({
+      fullName: "",
+      email: "",
+      mobile: "",
+      alternateMobile: "",
+      address: "",
+      password: "",
+    });
+
+    setMessage("");
+    setError("");
     setShowParentModal(true);
   };
 
@@ -175,6 +195,11 @@ const ParentsManagement = () => {
 
   // =========================================
   // Submit create/update parent form
+  // Includes:
+  // - required validation
+  // - email format validation
+  // - mobile validation
+  // - clean payload for backend
   // =========================================
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -182,19 +207,28 @@ const ParentsManagement = () => {
     setMessage("");
     setError("");
 
-    if (!formData.fullName || !formData.mobile) {
-      setError("Full name and mobile are required");
+    if (
+      !formData.fullName.trim() ||
+      !formData.email.trim() ||
+      !formData.mobile.trim()
+    ) {
+      setError("Full name, email and mobile are required");
       return;
     }
 
-    if (!/^\d{10}$/.test(formData.mobile)) {
+    if (!/^\S+@\S+\.\S+$/.test(formData.email.trim())) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    if (!/^\d{10}$/.test(formData.mobile.trim())) {
       setError("Mobile number must be exactly 10 digits");
       return;
     }
 
     if (
       formData.alternateMobile &&
-      !/^\d{10}$/.test(formData.alternateMobile)
+      !/^\d{10}$/.test(formData.alternateMobile.trim())
     ) {
       setError("Alternate mobile number must be exactly 10 digits");
       return;
@@ -202,7 +236,7 @@ const ParentsManagement = () => {
 
     if (
       formData.alternateMobile &&
-      formData.alternateMobile === formData.mobile
+      formData.alternateMobile.trim() === formData.mobile.trim()
     ) {
       setError("Mobile and alternate mobile cannot be same");
       return;
@@ -216,18 +250,27 @@ const ParentsManagement = () => {
     try {
       setLoading(true);
 
+      const payload = {
+        fullName: formData.fullName.trim(),
+        email: formData.email.trim(),
+        mobile: formData.mobile.trim(),
+        alternateMobile: formData.alternateMobile.trim() || null,
+        address: formData.address.trim() || null,
+        password: formData.password,
+      };
+
       let response;
 
       if (editingParentId) {
         response = await axios.put(
           `/admin/update-parent/${editingParentId}`,
-          formData,
+          payload,
           {
             headers: getAuthHeaders(),
           }
         );
       } else {
-        response = await axios.post("/admin/create-parent", formData, {
+        response = await axios.post("/admin/create-parent", payload, {
           headers: getAuthHeaders(),
         });
       }
@@ -288,7 +331,9 @@ const ParentsManagement = () => {
       if (response.data.success) {
         setMessage(
           response.data.message ||
-            `Parent ${newStatus === 1 ? "activated" : "deactivated"} successfully`
+            `Parent ${
+              newStatus === 1 ? "activated" : "deactivated"
+            } successfully`
         );
         fetchParents();
       }
@@ -661,7 +706,9 @@ const ParentsManagement = () => {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9b7440]">
               Total Parents
             </p>
-            <h3 className="mt-3 text-4xl font-bold text-black">{parents.length}</h3>
+            <h3 className="mt-3 text-4xl font-bold text-black">
+              {parents.length}
+            </h3>
             <p className="mt-2 text-sm text-gray-500">All parent records</p>
           </div>
 
@@ -672,7 +719,9 @@ const ParentsManagement = () => {
             <h3 className="mt-3 text-4xl font-bold text-black">
               {activeParentsCount}
             </h3>
-            <p className="mt-2 text-sm text-gray-500">Currently active parents</p>
+            <p className="mt-2 text-sm text-gray-500">
+              Currently active parents
+            </p>
           </div>
 
           <div className="rounded-[24px] border border-[#d8c3a0] bg-white px-6 py-5 shadow-sm">
@@ -682,7 +731,9 @@ const ParentsManagement = () => {
             <h3 className="mt-3 text-4xl font-bold text-black">
               {inactiveParentsCount}
             </h3>
-            <p className="mt-2 text-sm text-gray-500">Currently inactive parents</p>
+            <p className="mt-2 text-sm text-gray-500">
+              Currently inactive parents
+            </p>
           </div>
         </div>
 
@@ -765,9 +816,13 @@ const ParentsManagement = () => {
             </div>
 
             {tableLoading ? (
-              <div className="p-6 text-center text-gray-600">Loading parents...</div>
+              <div className="p-6 text-center text-gray-600">
+                Loading parents...
+              </div>
             ) : paginatedParents.length === 0 ? (
-              <div className="p-6 text-center text-gray-600">No parents found</div>
+              <div className="p-6 text-center text-gray-600">
+                No parents found
+              </div>
             ) : (
               paginatedParents.map((parent) => (
                 <ParentCard key={parent.ParentId} parent={parent} />
@@ -778,8 +833,11 @@ const ParentsManagement = () => {
               <div className="rounded-2xl border border-[#d6c2a8] bg-white p-4 shadow-sm">
                 <p className="mb-4 text-center text-sm text-[#6b7280]">
                   Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
-                  {Math.min(currentPage * ITEMS_PER_PAGE, filteredParents.length)} of{" "}
-                  {filteredParents.length} parents
+                  {Math.min(
+                    currentPage * ITEMS_PER_PAGE,
+                    filteredParents.length
+                  )}{" "}
+                  of {filteredParents.length} parents
                 </p>
 
                 <div className="flex flex-wrap items-center justify-center gap-2">
@@ -844,9 +902,13 @@ const ParentsManagement = () => {
 
           <div className="hidden overflow-x-auto 2xl:block">
             {tableLoading ? (
-              <div className="p-8 text-center text-gray-600">Loading parents...</div>
+              <div className="p-8 text-center text-gray-600">
+                Loading parents...
+              </div>
             ) : paginatedParents.length === 0 ? (
-              <div className="p-8 text-center text-gray-600">No parents found</div>
+              <div className="p-8 text-center text-gray-600">
+                No parents found
+              </div>
             ) : (
               <>
                 <table className="min-w-[1180px] w-full">
@@ -995,7 +1057,9 @@ const ParentsManagement = () => {
                                 )
                               }
                               className={`hover:underline ${
-                                parent.IsActive ? "text-red-700" : "text-green-700"
+                                parent.IsActive
+                                  ? "text-red-700"
+                                  : "text-green-700"
                               }`}
                             >
                               {parent.IsActive ? "Deactivate" : "Activate"}
@@ -1011,8 +1075,11 @@ const ParentsManagement = () => {
                   <div className="mt-6 flex flex-col items-center gap-4 border-t border-[#eadcc8] bg-white px-4 py-6">
                     <p className="text-center text-sm text-[#6b7280]">
                       Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
-                      {Math.min(currentPage * ITEMS_PER_PAGE, filteredParents.length)} of{" "}
-                      {filteredParents.length} parents
+                      {Math.min(
+                        currentPage * ITEMS_PER_PAGE,
+                        filteredParents.length
+                      )}{" "}
+                      of {filteredParents.length} parents
                     </p>
 
                     <div className="flex flex-wrap items-center justify-center gap-2">
@@ -1103,8 +1170,29 @@ const ParentsManagement = () => {
 
               <form
                 onSubmit={handleSubmit}
+                autoComplete="off"
                 className="max-h-[calc(92vh-88px)] space-y-4 overflow-y-auto p-4 sm:max-h-[calc(92vh-104px)] sm:space-y-5 sm:p-5"
               >
+                {/* 
+                  Dummy hidden fields browser autofill ko real email/password fields
+                  me fill hone se rokne ke liye use kiye hain.
+                */}
+                <input
+                  type="text"
+                  name="fakeUsername"
+                  autoComplete="username"
+                  tabIndex="-1"
+                  className="pointer-events-none absolute h-0 w-0 opacity-0"
+                />
+
+                <input
+                  type="password"
+                  name="fakePassword"
+                  autoComplete="new-password"
+                  tabIndex="-1"
+                  className="pointer-events-none absolute h-0 w-0 opacity-0"
+                />
+
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-black">
                     Full Name
@@ -1114,6 +1202,7 @@ const ParentsManagement = () => {
                     name="fullName"
                     value={formData.fullName}
                     onChange={handleChange}
+                    autoComplete="off"
                     placeholder="Enter full name"
                     className="w-full rounded-[18px] border border-[#b9c7da] bg-[#dfe7f5] px-4 py-3 text-base outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a] sm:rounded-[22px] sm:px-5 sm:py-3.5 sm:text-lg"
                   />
@@ -1128,6 +1217,7 @@ const ParentsManagement = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
+                    autoComplete="off"
                     placeholder="Enter email"
                     className="w-full rounded-[18px] border border-[#b9c7da] bg-[#dfe7f5] px-4 py-3 text-base outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a] sm:rounded-[22px] sm:px-5 sm:py-3.5 sm:text-lg"
                   />
@@ -1142,7 +1232,9 @@ const ParentsManagement = () => {
                     name="mobile"
                     value={formData.mobile}
                     onChange={handleChange}
+                    autoComplete="off"
                     placeholder="Enter 10-digit mobile number"
+                    maxLength={10}
                     className="w-full rounded-[18px] border border-[#b9c7da] bg-[#dfe7f5] px-4 py-3 text-base outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a] sm:rounded-[22px] sm:px-5 sm:py-3.5 sm:text-lg"
                   />
                 </div>
@@ -1156,7 +1248,9 @@ const ParentsManagement = () => {
                     name="alternateMobile"
                     value={formData.alternateMobile}
                     onChange={handleChange}
+                    autoComplete="off"
                     placeholder="Enter alternate mobile number"
+                    maxLength={10}
                     className="w-full rounded-[18px] border border-[#b9c7da] bg-[#dfe7f5] px-4 py-3 text-base outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a] sm:rounded-[22px] sm:px-5 sm:py-3.5 sm:text-lg"
                   />
                   <p className="mt-2 text-xs text-[#7b8794]">
@@ -1172,6 +1266,7 @@ const ParentsManagement = () => {
                     name="address"
                     value={formData.address}
                     onChange={handleChange}
+                    autoComplete="off"
                     placeholder="Enter address"
                     rows={3}
                     className="w-full resize-none rounded-[18px] border border-[#b9c7da] bg-[#dfe7f5] px-4 py-3 text-base outline-none focus:border-[#b79257] focus:ring-2 focus:ring-[#d2b07a] sm:rounded-[22px] sm:px-5 sm:py-3.5 sm:text-lg"
@@ -1188,6 +1283,7 @@ const ParentsManagement = () => {
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
+                    autoComplete="new-password"
                     placeholder={
                       editingParentId
                         ? "Leave blank to keep current password"

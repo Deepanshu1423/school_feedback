@@ -75,7 +75,12 @@ const getParentProfile = (parentId, callback) => {
 };
 
 const updateParentProfile = async (parentId, profileData) => {
-  const { fullName, alternateMobile, address } = profileData;
+  const { fullName, email, alternateMobile, address } = profileData;
+
+  const cleanFullName = fullName?.trim();
+  const cleanEmail = email?.trim().toLowerCase();
+  const cleanAlternateMobile = alternateMobile || null;
+  const cleanAddress = address?.trim() || null;
 
   const [rows] = await db.promise().query(
     `
@@ -88,7 +93,7 @@ const updateParentProfile = async (parentId, profileData) => {
     WHERE up.ParentId = ?
     LIMIT 1
     `,
-    [parentId]
+    [parentId],
   );
 
   if (rows.length === 0) {
@@ -97,17 +102,20 @@ const updateParentProfile = async (parentId, profileData) => {
 
   const currentMobile = rows[0].Mobile || "";
 
-  if (alternateMobile && alternateMobile === currentMobile) {
+  if (cleanAlternateMobile && cleanAlternateMobile === currentMobile) {
     throw new Error("Mobile and alternate mobile cannot be same");
   }
 
   await db.promise().query(
     `
     UPDATE user_Details
-    SET FullName = ?, AlternateMobile = ?
+    SET
+      FullName = ?,
+      Email = ?,
+      AlternateMobile = ?
     WHERE UserId = ?
     `,
-    [fullName, alternateMobile || null, parentId]
+    [cleanFullName, cleanEmail, cleanAlternateMobile, parentId],
   );
 
   await db.promise().query(
@@ -116,12 +124,11 @@ const updateParentProfile = async (parentId, profileData) => {
     SET Address = ?
     WHERE ParentId = ?
     `,
-    [address?.trim() || null, parentId]
+    [cleanAddress, parentId],
   );
 
   return { success: true };
 };
-
 const getParentFeedbackHistory = (parentId, callback) => {
   const query = `
     SELECT
@@ -311,7 +318,7 @@ const getMappedTeachersAndSubjectsByClassFilters = (
   classId,
   teacherId,
   subjectId,
-  callback
+  callback,
 ) => {
   let query = `
     SELECT DISTINCT
@@ -357,6 +364,5 @@ module.exports = {
   getParentStudentFeedbackStats,
   getParentStudentRecentFeedback,
   getMappedTeachersAndSubjectsByClassFilters,
-  getParentProfile,
   updateParentProfile,
 };

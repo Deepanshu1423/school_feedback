@@ -660,9 +660,9 @@ const FeedbackFormsManagement = () => {
                       </span>
                     </td>
 
-                    <td className="px-3 py-4">
+                    <td className=" px-3 py-4 ">
                       {form.CreatedAt ? (
-                        <div className="min-w-[180px] rounded-2xl border border-[#e3d3bb] bg-white px-3 py-3 shadow-sm">
+                        <div className="min-w-[100px] rounded-2xl border border-[#e3d3bb] bg-white px-3 py-3 shadow-sm">
                           <div className="flex items-center gap-2 text-black font-semibold text-sm">
                             <span>📅</span>
                             <span>{formatDate(form.CreatedAt)}</span>

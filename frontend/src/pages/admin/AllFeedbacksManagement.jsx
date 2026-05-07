@@ -1,6 +1,41 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "../../api/axios";
 
+// =========================================
+// Reusable truncated text component
+// Purpose:
+// - Long text ko compact dikhana
+// - Extra text ke liye "..." show karna
+// - Hover par full text browser tooltip me show karna
+// =========================================
+const TruncatedText = ({
+  text,
+  lines = 1,
+  emptyText = "-",
+  className = "",
+}) => {
+  const value = text ? String(text) : "";
+
+  if (!value.trim()) {
+    return <span>{emptyText}</span>;
+  }
+
+  return (
+    <p
+      title={value}
+      className={`break-words ${className}`}
+      style={{
+        display: "-webkit-box",
+        WebkitLineClamp: lines,
+        WebkitBoxOrient: "vertical",
+        overflow: "hidden",
+      }}
+    >
+      {value}
+    </p>
+  );
+};
+
 const AllFeedbacksManagement = () => {
   // =========================================
   // Main data states
@@ -111,37 +146,43 @@ const AllFeedbacksManagement = () => {
   // =========================================
   const toggleSort = (type) => {
     if (type === "parent") {
-      const next = parentSort === "" ? "asc" : parentSort === "asc" ? "desc" : "";
+      const next =
+        parentSort === "" ? "asc" : parentSort === "asc" ? "desc" : "";
       resetAllSorts();
       setParentSort(next);
     }
 
     if (type === "student") {
-      const next = studentSort === "" ? "asc" : studentSort === "asc" ? "desc" : "";
+      const next =
+        studentSort === "" ? "asc" : studentSort === "asc" ? "desc" : "";
       resetAllSorts();
       setStudentSort(next);
     }
 
     if (type === "class") {
-      const next = classSort === "" ? "asc" : classSort === "asc" ? "desc" : "";
+      const next =
+        classSort === "" ? "asc" : classSort === "asc" ? "desc" : "";
       resetAllSorts();
       setClassSort(next);
     }
 
     if (type === "teacher") {
-      const next = teacherSort === "" ? "asc" : teacherSort === "asc" ? "desc" : "";
+      const next =
+        teacherSort === "" ? "asc" : teacherSort === "asc" ? "desc" : "";
       resetAllSorts();
       setTeacherSort(next);
     }
 
     if (type === "subject") {
-      const next = subjectSort === "" ? "asc" : subjectSort === "asc" ? "desc" : "";
+      const next =
+        subjectSort === "" ? "asc" : subjectSort === "asc" ? "desc" : "";
       resetAllSorts();
       setSubjectSort(next);
     }
 
     if (type === "rating") {
-      const next = ratingSort === "" ? "desc" : ratingSort === "desc" ? "asc" : "";
+      const next =
+        ratingSort === "" ? "desc" : ratingSort === "desc" ? "asc" : "";
       resetAllSorts();
       setRatingSort(next);
     }
@@ -274,13 +315,19 @@ const AllFeedbacksManagement = () => {
         classFilter === "all" ? true : String(item.ClassId) === classFilter;
 
       const matchesTeacher =
-        teacherFilter === "all" ? true : String(item.TeacherId) === teacherFilter;
+        teacherFilter === "all"
+          ? true
+          : String(item.TeacherId) === teacherFilter;
 
       const matchesSubject =
-        subjectFilter === "all" ? true : String(item.SubjectId) === subjectFilter;
+        subjectFilter === "all"
+          ? true
+          : String(item.SubjectId) === subjectFilter;
 
       const matchesForm =
-        formFilter === "all" ? true : String(item.FeedbackFormId) === formFilter;
+        formFilter === "all"
+          ? true
+          : String(item.FeedbackFormId) === formFilter;
 
       const hasResponse =
         item.TeacherResponse && item.TeacherResponse.trim() !== "";
@@ -479,28 +526,35 @@ const AllFeedbacksManagement = () => {
 
   // =========================================
   // Mobile / small-screen feedback card
+  // Long text fields:
+  // - Form = 1 line
+  // - Comment = 2 lines
+  // - Teacher Response = 2 lines
+  // Hover par full text tooltip me show hoga
   // =========================================
   const FeedbackCard = ({ item }) => {
     const hasResponse =
       item.TeacherResponse && item.TeacherResponse.trim() !== "";
 
     return (
-      <div className="rounded-2xl border border-[#e7d5b7] bg-white p-4 shadow-sm space-y-4">
+      <div className="space-y-4 rounded-2xl border border-[#e7d5b7] bg-white p-4 shadow-sm">
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div>
             <p className="text-xs text-gray-500">Parent</p>
-            <p className="font-semibold text-black break-words">
+            <p className="break-words font-semibold text-black">
               {item.ParentName || "-"}
             </p>
-            <p className="text-xs text-[#a57f42] mt-1">{item.ParentCode || ""}</p>
+            <p className="mt-1 text-xs text-[#a57f42]">
+              {item.ParentCode || ""}
+            </p>
           </div>
 
           <div>
             <p className="text-xs text-gray-500">Student</p>
-            <p className="font-semibold text-black break-words">
+            <p className="break-words font-semibold text-black">
               {item.StudentName || "-"}
             </p>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="mt-1 text-xs text-gray-500">
               Roll No: {item.RollNumber || "-"}
             </p>
           </div>
@@ -510,25 +564,35 @@ const AllFeedbacksManagement = () => {
             <p className="text-black">
               {item.ClassName || "-"} {item.Section || ""}
             </p>
-            <p className="text-xs text-gray-500 mt-1">{item.AcademicYear || ""}</p>
+            <p className="mt-1 text-xs text-gray-500">
+              {item.AcademicYear || ""}
+            </p>
           </div>
 
           <div>
             <p className="text-xs text-gray-500">Teacher</p>
-            <p className="font-semibold text-black break-words">
+            <p className="break-words font-semibold text-black">
               {item.TeacherName || "-"}
             </p>
-            <p className="text-xs text-[#a57f42] mt-1">{item.TeacherCode || ""}</p>
+            <p className="mt-1 text-xs text-[#a57f42]">
+              {item.TeacherCode || ""}
+            </p>
           </div>
 
           <div>
             <p className="text-xs text-gray-500">Subject</p>
-            <p className="text-black break-words">{item.SubjectName || "-"}</p>
+            <p className="break-words text-black">
+              {item.SubjectName || "-"}
+            </p>
           </div>
 
           <div>
             <p className="text-xs text-gray-500">Form</p>
-            <p className="text-black break-words">{item.FormName || "-"}</p>
+            <TruncatedText
+              text={item.FormName}
+              lines={1}
+              className="text-black"
+            />
           </div>
 
           <div>
@@ -540,34 +604,34 @@ const AllFeedbacksManagement = () => {
 
           <div className="col-span-2">
             <p className="text-xs text-gray-500">Comment</p>
-            <div className="mt-1 rounded-xl bg-[#faf6ef] border border-[#eadcc8] px-3 py-3 text-black whitespace-pre-wrap break-words">
-              {item.Comments || "-"}
+            <div className="mt-1 rounded-xl border border-[#eadcc8] bg-[#faf6ef] px-3 py-3 text-black">
+              <TruncatedText text={item.Comments} lines={2} />
             </div>
           </div>
 
           <div className="col-span-2">
             <p className="text-xs text-gray-500">Teacher Response</p>
             {hasResponse ? (
-              <div className="mt-1 rounded-xl bg-[#f6fbf4] border border-[#dbe8d5] px-3 py-3 text-black whitespace-pre-wrap break-words">
-                {item.TeacherResponse}
+              <div className="mt-1 rounded-xl border border-[#dbe8d5] bg-[#f6fbf4] px-3 py-3 text-black">
+                <TruncatedText text={item.TeacherResponse} lines={2} />
               </div>
             ) : (
-              <span className="mt-1 inline-flex rounded-full px-3 py-1 text-xs font-semibold bg-yellow-100 text-yellow-700">
+              <span className="mt-1 inline-flex rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">
                 Pending
               </span>
             )}
           </div>
 
           <div className="col-span-2">
-            <p className="text-xs text-gray-500 mb-2">Submitted At</p>
+            <p className="mb-2 text-xs text-gray-500">Submitted At</p>
             {item.SubmittedAt ? (
               <div className="rounded-2xl border border-[#e3d3bb] bg-[#fffdf9] px-3 py-3 shadow-sm">
-                <div className="flex items-center gap-2 text-black font-semibold text-sm">
+                <div className="flex items-center gap-2 text-sm font-semibold text-black">
                   <span>📅</span>
                   <span>{formatDate(item.SubmittedAt)}</span>
                 </div>
 
-                <div className="mt-2 flex items-center gap-2 text-gray-600 text-xs flex-wrap">
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-600">
                   <span>🕒</span>
                   <span className="whitespace-nowrap">
                     {formatTime(item.SubmittedAt)}
@@ -594,18 +658,18 @@ const AllFeedbacksManagement = () => {
   // =========================================
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center text-xl font-semibold text-black">
+      <div className="flex min-h-[60vh] items-center justify-center text-xl font-semibold text-black">
         Loading feedbacks...
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 w-full max-w-full overflow-x-hidden">
+    <div className="w-full max-w-full space-y-6 overflow-x-hidden">
       {/* =========================================
           Summary cards
          ========================================= */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full max-w-full">
+      <div className="grid w-full max-w-full grid-cols-1 gap-5 md:grid-cols-3">
         <div className="rounded-[24px] border border-[#d8c3a0] bg-white px-6 py-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9b7440]">
             Total Feedbacks
@@ -613,23 +677,33 @@ const AllFeedbacksManagement = () => {
           <h3 className="mt-3 text-4xl font-bold text-black">
             {filteredFeedbacks.length}
           </h3>
-          <p className="mt-2 text-sm text-gray-500">All filtered feedback records</p>
+          <p className="mt-2 text-sm text-gray-500">
+            All filtered feedback records
+          </p>
         </div>
 
         <div className="rounded-[24px] border border-[#d8c3a0] bg-white px-6 py-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9b7440]">
             Responded
           </p>
-          <h3 className="mt-3 text-4xl font-bold text-black">{respondedCount}</h3>
-          <p className="mt-2 text-sm text-gray-500">Teacher response submitted</p>
+          <h3 className="mt-3 text-4xl font-bold text-black">
+            {respondedCount}
+          </h3>
+          <p className="mt-2 text-sm text-gray-500">
+            Teacher response submitted
+          </p>
         </div>
 
         <div className="rounded-[24px] border border-[#d8c3a0] bg-white px-6 py-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9b7440]">
             Pending
           </p>
-          <h3 className="mt-3 text-4xl font-bold text-black">{pendingCount}</h3>
-          <p className="mt-2 text-sm text-gray-500">Awaiting teacher response</p>
+          <h3 className="mt-3 text-4xl font-bold text-black">
+            {pendingCount}
+          </h3>
+          <p className="mt-2 text-sm text-gray-500">
+            Awaiting teacher response
+          </p>
         </div>
       </div>
 
@@ -643,25 +717,28 @@ const AllFeedbacksManagement = () => {
       {/* =========================================
           Filter section
          ========================================= */}
-      <div className="w-full max-w-full bg-white border border-[#d8c3a0] rounded-[28px] shadow-lg overflow-hidden">
-        <div className="bg-[#f1e7d7] px-6 py-5 border-b border-[#dcc7a6] space-y-4">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="w-full max-w-full overflow-hidden rounded-[28px] border border-[#d8c3a0] bg-white shadow-lg">
+        <div className="space-y-4 border-b border-[#dcc7a6] bg-[#f1e7d7] px-6 py-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold text-black">Feedback Filters</h2>
-              <p className="text-gray-600 text-sm mt-1">
-                Refine records by search, class, teacher, subject, form and response status
+              <h2 className="text-2xl font-bold text-black">
+                Feedback Filters
+              </h2>
+              <p className="mt-1 text-sm text-gray-600">
+                Refine records by search, class, teacher, subject, form and
+                response status
               </p>
             </div>
 
             <button
               onClick={handleClearFilters}
-              className="rounded-2xl bg-black text-white px-5 py-3 text-sm font-medium hover:opacity-90"
+              className="rounded-2xl bg-black px-5 py-3 text-sm font-medium text-white hover:opacity-90"
             >
               Clear
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             <input
               type="text"
               placeholder="Search parent, student, teacher, comment..."
@@ -737,53 +814,53 @@ const AllFeedbacksManagement = () => {
         {/* =========================================
             Mobile / tablet view
            ========================================= */}
-        <div className="block 2xl:hidden p-4 space-y-4 bg-[#fcfaf6]">
-          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+        <div className="block space-y-4 bg-[#fcfaf6] p-4 2xl:hidden">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
             <button
               onClick={() => toggleSort("parent")}
-              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
+              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-left text-xs font-semibold"
             >
               Parent{getSortIndicator(parentSort)}
             </button>
 
             <button
               onClick={() => toggleSort("student")}
-              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
+              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-left text-xs font-semibold"
             >
               Student{getSortIndicator(studentSort)}
             </button>
 
             <button
               onClick={() => toggleSort("class")}
-              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
+              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-left text-xs font-semibold"
             >
               Class{getSortIndicator(classSort)}
             </button>
 
             <button
               onClick={() => toggleSort("teacher")}
-              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
+              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-left text-xs font-semibold"
             >
               Teacher{getSortIndicator(teacherSort)}
             </button>
 
             <button
               onClick={() => toggleSort("subject")}
-              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
+              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-left text-xs font-semibold"
             >
               Subject{getSortIndicator(subjectSort)}
             </button>
 
             <button
               onClick={() => toggleSort("rating")}
-              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
+              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-left text-xs font-semibold"
             >
               Rating{getSortIndicator(ratingSort)}
             </button>
 
             <button
               onClick={() => toggleSort("submitted")}
-              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-xs font-semibold text-left"
+              className="rounded-xl border border-[#d8c3a0] bg-white px-3 py-2 text-left text-xs font-semibold"
             >
               Submitted{getSortIndicator(submittedSort, "date")}
             </button>
@@ -804,8 +881,11 @@ const AllFeedbacksManagement = () => {
             <div className="rounded-2xl border border-[#d6c2a8] bg-white p-4 shadow-sm">
               <p className="mb-4 text-center text-sm text-[#6b7280]">
                 Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
-                {Math.min(currentPage * ITEMS_PER_PAGE, filteredFeedbacks.length)} of{" "}
-                {filteredFeedbacks.length} records
+                {Math.min(
+                  currentPage * ITEMS_PER_PAGE,
+                  filteredFeedbacks.length
+                )}{" "}
+                of {filteredFeedbacks.length} records
               </p>
 
               <div className="flex flex-wrap items-center justify-center gap-2">
@@ -871,74 +951,74 @@ const AllFeedbacksManagement = () => {
         {/* =========================================
             Laptop / desktop table view
            ========================================= */}
-        <div className="hidden 2xl:block w-full max-w-full bg-[#fcfaf6]">
+        <div className="hidden w-full max-w-full bg-[#fcfaf6] 2xl:block">
           {paginatedFeedbacks.length === 0 ? (
             <div className="p-8 text-center text-gray-600">
               No feedback records found
             </div>
           ) : (
             <div className="w-full overflow-x-auto overflow-y-hidden">
-              <div className="min-w-[1450px]">
-                <table className="w-full bg-white border-t border-[#eadcc8]">
+              <div className="min-w-[1350px]">
+                <table className="w-full border-t border-[#eadcc8] bg-white">
                   <thead className="bg-[#fbf7f0]">
                     <tr>
                       <th
                         onClick={() => toggleSort("parent")}
-                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                        className="cursor-pointer select-none px-3 py-3 text-left text-sm font-bold text-black"
                       >
                         Parent{getSortIndicator(parentSort)}
                       </th>
 
                       <th
                         onClick={() => toggleSort("student")}
-                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                        className="cursor-pointer select-none px-3 py-3 text-left text-sm font-bold text-black"
                       >
                         Student{getSortIndicator(studentSort)}
                       </th>
 
                       <th
                         onClick={() => toggleSort("class")}
-                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                        className="cursor-pointer select-none px-3 py-3 text-left text-sm font-bold text-black"
                       >
                         Class{getSortIndicator(classSort)}
                       </th>
 
                       <th
                         onClick={() => toggleSort("teacher")}
-                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                        className="cursor-pointer select-none px-3 py-3 text-left text-sm font-bold text-black"
                       >
                         Teacher{getSortIndicator(teacherSort)}
                       </th>
 
                       <th
                         onClick={() => toggleSort("subject")}
-                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                        className="cursor-pointer select-none px-3 py-3 text-left text-sm font-bold text-black"
                       >
                         Subject{getSortIndicator(subjectSort)}
                       </th>
 
-                      <th className="text-left px-3 py-3 text-sm font-bold text-black">
+                      <th className="px-3 py-3 text-left text-sm font-bold text-black">
                         Form
                       </th>
 
                       <th
                         onClick={() => toggleSort("rating")}
-                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                        className="cursor-pointer select-none px-3 py-3 text-left text-sm font-bold text-black"
                       >
                         Rating{getSortIndicator(ratingSort)}
                       </th>
 
-                      <th className="text-left px-3 py-3 text-sm font-bold text-black">
+                      <th className="px-3 py-3 text-left text-sm font-bold text-black">
                         Comment
                       </th>
 
-                      <th className="text-left px-3 py-3 text-sm font-bold text-black">
+                      <th className="px-3 py-3 text-left text-sm font-bold text-black">
                         Teacher Response
                       </th>
 
                       <th
                         onClick={() => toggleSort("submitted")}
-                        className="cursor-pointer text-left px-3 py-3 text-sm font-bold text-black select-none"
+                        className="cursor-pointer select-none px-3 py-3 text-left text-sm font-bold text-black"
                       >
                         Submitted At{getSortIndicator(submittedSort, "date")}
                       </th>
@@ -949,19 +1029,25 @@ const AllFeedbacksManagement = () => {
                     {paginatedFeedbacks.map((item) => (
                       <tr
                         key={item.FeedbackId}
-                        className="border-t border-[#eee2cf] hover:bg-[#fcfaf6] align-top"
+                        className="border-t border-[#eee2cf] align-top hover:bg-[#fcfaf6]"
                       >
-                        <td className="px-3 py-4 text-black max-w-[150px]">
-                          <div className="font-medium truncate" title={item.ParentName || "-"}>
+                        <td className="max-w-[140px] px-3 py-4 text-black">
+                          <div
+                            className="truncate font-medium"
+                            title={item.ParentName || "-"}
+                          >
                             {item.ParentName || "-"}
                           </div>
-                          <div className="text-xs text-[#a57f42] truncate">
+                          <div className="truncate text-xs text-[#a57f42]">
                             {item.ParentCode || ""}
                           </div>
                         </td>
 
-                        <td className="px-3 py-4 text-gray-700 max-w-[150px]">
-                          <div className="font-medium text-black truncate" title={item.StudentName || "-"}>
+                        <td className="max-w-[140px] px-3 py-4 text-gray-700">
+                          <div
+                            className="truncate font-medium text-black"
+                            title={item.StudentName || "-"}
+                          >
                             {item.StudentName || "-"}
                           </div>
                           <div className="text-xs text-gray-500">
@@ -969,34 +1055,35 @@ const AllFeedbacksManagement = () => {
                           </div>
                         </td>
 
-                        <td className="px-3 py-4 text-gray-700 whitespace-nowrap">
+                        <td className="whitespace-nowrap px-3 py-4 text-gray-700">
                           {item.ClassName || "-"} {item.Section || ""}
                           <div className="text-xs text-gray-500">
                             {item.AcademicYear || ""}
                           </div>
                         </td>
 
-                        <td className="px-3 py-4 text-gray-700 max-w-[150px]">
-                          <div className="font-medium text-black truncate" title={item.TeacherName || "-"}>
+                        <td className="max-w-[140px] px-3 py-4 text-gray-700">
+                          <div
+                            className="truncate font-medium text-black"
+                            title={item.TeacherName || "-"}
+                          >
                             {item.TeacherName || "-"}
                           </div>
-                          <div className="text-xs text-[#a57f42] truncate">
+                          <div className="truncate text-xs text-[#a57f42]">
                             {item.TeacherCode || ""}
                           </div>
                         </td>
 
                         <td
-                          className="px-3 py-4 text-gray-700 max-w-[120px] truncate"
+                          className="max-w-[110px] truncate px-3 py-4 text-gray-700"
                           title={item.SubjectName || "-"}
                         >
                           {item.SubjectName || "-"}
                         </td>
 
-                        <td
-                          className="px-3 py-4 text-gray-700 max-w-[150px] truncate"
-                          title={item.FormName || "-"}
-                        >
-                          {item.FormName || "-"}
+                        {/* Form column compacted to one line */}
+                        <td className="max-w-[115px] px-3 py-4 text-gray-700">
+                          <TruncatedText text={item.FormName} lines={1} />
                         </td>
 
                         <td className="px-3 py-4 text-gray-700">
@@ -1005,19 +1092,21 @@ const AllFeedbacksManagement = () => {
                           </span>
                         </td>
 
-                        <td className="px-3 py-4 text-gray-700 max-w-[240px]">
-                          <div className="whitespace-pre-wrap break-words">
-                            {item.Comments || "-"}
-                          </div>
+                        {/* Comment column compacted to two lines */}
+                        <td className="max-w-[180px] px-3 py-4 text-gray-700">
+                          <TruncatedText text={item.Comments} lines={2} />
                         </td>
 
-                        <td className="px-3 py-4 text-gray-700 max-w-[240px]">
-                          {item.TeacherResponse && item.TeacherResponse.trim() !== "" ? (
-                            <div className="whitespace-pre-wrap break-words">
-                              {item.TeacherResponse}
-                            </div>
+                        {/* Teacher Response column compacted to two lines */}
+                        <td className="max-w-[180px] px-3 py-4 text-gray-700">
+                          {item.TeacherResponse &&
+                          item.TeacherResponse.trim() !== "" ? (
+                            <TruncatedText
+                              text={item.TeacherResponse}
+                              lines={2}
+                            />
                           ) : (
-                            <span className="inline-flex rounded-full px-3 py-1 text-xs font-semibold bg-yellow-100 text-yellow-700">
+                            <span className="inline-flex rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">
                               Pending
                             </span>
                           )}
@@ -1025,13 +1114,13 @@ const AllFeedbacksManagement = () => {
 
                         <td className="px-3 py-4">
                           {item.SubmittedAt ? (
-                            <div className="min-w-[180px] rounded-2xl border border-[#e3d3bb] bg-white px-3 py-3 shadow-sm">
-                              <div className="flex items-center gap-2 text-black font-semibold text-sm">
+                            <div className="min-w-[170px] rounded-2xl border border-[#e3d3bb] bg-white px-3 py-3 shadow-sm">
+                              <div className="flex items-center gap-2 text-sm font-semibold text-black">
                                 <span>📅</span>
                                 <span>{formatDate(item.SubmittedAt)}</span>
                               </div>
 
-                              <div className="mt-2 flex items-center gap-2 text-gray-600 text-xs flex-wrap">
+                              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-600">
                                 <span>🕒</span>
                                 <span className="whitespace-nowrap">
                                   {formatTime(item.SubmittedAt)}
@@ -1056,10 +1145,13 @@ const AllFeedbacksManagement = () => {
                 {/* Desktop pagination inside same section */}
                 {filteredFeedbacks.length > 0 && totalPages > 1 && (
                   <div className="mt-6 flex flex-col items-center gap-4 border-t border-[#eadcc8] bg-white px-4 py-6">
-                    <p className="text-sm text-[#6b7280] text-center">
+                    <p className="text-center text-sm text-[#6b7280]">
                       Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
-                      {Math.min(currentPage * ITEMS_PER_PAGE, filteredFeedbacks.length)} of{" "}
-                      {filteredFeedbacks.length} records
+                      {Math.min(
+                        currentPage * ITEMS_PER_PAGE,
+                        filteredFeedbacks.length
+                      )}{" "}
+                      of {filteredFeedbacks.length} records
                     </p>
 
                     <div className="flex flex-wrap items-center justify-center gap-2">

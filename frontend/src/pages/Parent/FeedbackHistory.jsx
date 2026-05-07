@@ -1,6 +1,40 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../api/axios";
+
+
+// =========================================
+// Reusable truncated text component
+// Long text ko limited lines me show karta hai
+// Aur hover par full text browser tooltip me show hota hai
+// =========================================
+const TruncatedText = ({
+  text,
+  lines = 1,
+  emptyText = "N/A",
+  className = "",
+}) => {
+  const value = text ? String(text) : "";
+
+  if (!value.trim()) {
+    return <span>{emptyText}</span>;
+  }
+
+  return (
+    <p
+      title={value}
+      className={`break-words ${className}`}
+      style={{
+        display: "-webkit-box",
+        WebkitLineClamp: lines,
+        WebkitBoxOrient: "vertical",
+        overflow: "hidden",
+      }}
+    >
+      {value}
+    </p>
+  );
+};
 
 const FeedbackHistory = () => {
   const navigate = useNavigate();
@@ -15,6 +49,13 @@ const FeedbackHistory = () => {
   const [selectedStudentName, setSelectedStudentName] = useState(
     localStorage.getItem("selectedStudentName") || ""
   );
+
+  // =========================================
+  // Mobile header menu states
+  // Mobile me Profile / Back / Submit Feedback / Logout ek menu me show honge
+  // =========================================
+  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
+  const headerMenuRef = useRef(null);
 
   // =========================================
   // Main page states
@@ -40,6 +81,26 @@ const FeedbackHistory = () => {
   const ITEMS_PER_PAGE = 10;
 
   // =========================================
+  // Close mobile header menu when user clicks outside
+  // =========================================
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        headerMenuRef.current &&
+        !headerMenuRef.current.contains(event.target)
+      ) {
+        setIsHeaderMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // =========================================
   // Load students for the selected parent
   // =========================================
   useEffect(() => {
@@ -58,11 +119,17 @@ const FeedbackHistory = () => {
 
           const activeStudent = exists
             ? studentsData.find(
-              (student) => String(student.studentId) === String(storedStudentId)
+              (student) =>
+                String(student.studentId) === String(storedStudentId)
             )
             : studentsData[0];
 
           if (activeStudent) {
+            const classText = `${activeStudent.class?.className || ""}${activeStudent.class?.section
+              ? `-${activeStudent.class.section}`
+              : ""
+              }`;
+
             localStorage.setItem(
               "selectedStudentId",
               String(activeStudent.studentId)
@@ -71,13 +138,7 @@ const FeedbackHistory = () => {
               "selectedStudentName",
               activeStudent.studentName || ""
             );
-            localStorage.setItem(
-              "selectedStudentClass",
-              `${activeStudent.class?.className || ""}${activeStudent.class?.section
-                ? `-${activeStudent.class.section}`
-                : ""
-              }`
-            );
+            localStorage.setItem("selectedStudentClass", classText);
             localStorage.setItem(
               "selectedStudentClassId",
               String(activeStudent.class?.classId || "")
@@ -245,13 +306,12 @@ const FeedbackHistory = () => {
     );
 
     if (selected) {
+      const classText = `${selected.class?.className || ""}${selected.class?.section ? `-${selected.class.section}` : ""
+        }`;
+
       localStorage.setItem("selectedStudentId", String(selected.studentId));
       localStorage.setItem("selectedStudentName", selected.studentName || "");
-      localStorage.setItem(
-        "selectedStudentClass",
-        `${selected.class?.className || ""}${selected.class?.section ? `-${selected.class.section}` : ""
-        }`
-      );
+      localStorage.setItem("selectedStudentClass", classText);
       localStorage.setItem(
         "selectedStudentClassId",
         String(selected.class?.classId || "")
@@ -259,6 +319,7 @@ const FeedbackHistory = () => {
 
       setSelectedStudentId(String(selected.studentId));
       setSelectedStudentName(selected.studentName || "");
+      setIsHeaderMenuOpen(false);
 
       setSearchTerm("");
       setStatusFilter("All");
@@ -272,9 +333,21 @@ const FeedbackHistory = () => {
   };
 
   // =========================================
+  // Header navigation helper
+  // Mobile menu option click hone ke baad menu close hota hai
+  // =========================================
+  const handleHeaderNavigate = (path) => {
+    setIsHeaderMenuOpen(false);
+    navigate(path);
+  };
+
+  // =========================================
   // Logout handler
+  // Login token + selected child data clear karta hai
   // =========================================
   const handleLogout = () => {
+    setIsHeaderMenuOpen(false);
+
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("selectedStudentId");
@@ -352,6 +425,7 @@ const FeedbackHistory = () => {
           a.teacher ||
           ""
         ).toLowerCase();
+
         const bValue = (
           b.TeacherName ||
           b.teacherName ||
@@ -398,9 +472,11 @@ const FeedbackHistory = () => {
   // Summary counts
   // =========================================
   const totalRecords = filteredFeedback.length;
+
   const respondedCount = filteredFeedback.filter(
     (item) => item.TeacherResponse && item.TeacherResponse.trim() !== ""
   ).length;
+
   const pendingCount = filteredFeedback.filter(
     (item) => !item.TeacherResponse || item.TeacherResponse.trim() === ""
   ).length;
@@ -485,52 +561,123 @@ const FeedbackHistory = () => {
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <select
-                value={selectedStudentId}
-                onChange={handleStudentChange}
-                className="rounded-xl border border-[#d6c2a8] bg-[#e8dcc8] px-4 py-2.5 pr-10 font-semibold text-black shadow-sm outline-none transition hover:bg-[#ddcfb8]"
-              >
-                {students.map((student) => (
-                  <option key={student.studentId} value={student.studentId}>
-                    {student.studentName}
-                    {student.class?.className
-                      ? ` - ${student.class.className}${student.class?.section ? `-${student.class.section}` : ""
-                      }`
-                      : ""}
-                  </option>
-                ))}
-              </select>
+            {/* =========================================
+                Header controls
+                Mobile: menu icon left + child dropdown right
+                Desktop: child dropdown + normal buttons
+               ========================================= */}
+            <div className="flex w-full flex-col gap-3 lg:w-auto lg:flex-row lg:items-center lg:justify-end">
+              <div className="flex w-full items-center gap-3 lg:w-auto">
+                {/* Mobile combined menu button */}
+                {/* No Actions text. Sirf icon show hoga. */}
+                <div
+                  ref={headerMenuRef}
+                  className="relative flex flex-shrink-0 justify-start lg:hidden"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setIsHeaderMenuOpen((prev) => !prev)}
+                    className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#b08d57] font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
+                    aria-label="Open feedback history menu"
+                  >
+                    <span className="text-2xl leading-none">
+                      {isHeaderMenuOpen ? "×" : "☰"}
+                    </span>
+                  </button>
 
-              <button
-                onClick={() => navigate(`/parent/profile/${parentId}`)}
-                className="rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
-              >
-                Profile
-              </button>
+                  {isHeaderMenuOpen && (
+                    <div className="absolute left-0 top-full z-40 mt-2 w-56 overflow-hidden rounded-2xl border border-[#d6c2a8] bg-[#fffaf3] shadow-xl">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleHeaderNavigate(`/parent/profile/${parentId}`)
+                        }
+                        className="block w-full px-4 py-3 text-left text-sm font-semibold text-[#1a1a1a] transition hover:bg-[#f1e7d7]"
+                      >
+                        Profile
+                      </button>
 
-              <button
-                onClick={() => navigate(`/parent/dashboard/${parentId}`)}
-                className="rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
-              >
-                Back to Dashboard
-              </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleHeaderNavigate(`/parent/dashboard/${parentId}`)
+                        }
+                        className="block w-full px-4 py-3 text-left text-sm font-semibold text-[#1a1a1a] transition hover:bg-[#f1e7d7]"
+                      >
+                        Back to Dashboard
+                      </button>
 
-              <button
-                onClick={() => navigate(`/submit-feedback/${parentId}`)}
-                className="rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
-              >
-                Submit Feedback
-              </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleHeaderNavigate(`/submit-feedback/${parentId}`)
+                        }
+                        className="block w-full px-4 py-3 text-left text-sm font-semibold text-[#1a1a1a] transition hover:bg-[#f1e7d7]"
+                      >
+                        Submit Feedback
+                      </button>
 
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="block w-full border-t border-[#eadfcf] px-4 py-3 text-left text-sm font-semibold text-red-700 transition hover:bg-red-50"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
 
+                {/* Selected child dropdown */}
+                <select
+                  value={selectedStudentId}
+                  onChange={handleStudentChange}
+                  className="min-w-0 flex-1 rounded-xl border border-[#d6c2a8] bg-[#e8dcc8] px-4 py-2.5 pr-10 font-semibold text-black shadow-sm outline-none transition hover:bg-[#ddcfb8] lg:w-auto lg:min-w-[230px] lg:flex-none"
+                >
+                  {students.map((student) => (
+                    <option key={student.studentId} value={student.studentId}>
+                      {student.studentName}
+                      {student.class?.className
+                        ? ` - ${student.class.className}${student.class?.section
+                          ? `-${student.class.section}`
+                          : ""
+                        }`
+                        : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-              <button
-                onClick={handleLogout}
-                className="rounded-xl bg-[#f1e7d7] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#e5d7c1]"
-              >
-                Logout
-              </button>
+              {/* Desktop header buttons */}
+              <div className="hidden flex-wrap gap-3 lg:flex">
+                <button
+                  onClick={() => navigate(`/parent/profile/${parentId}`)}
+                  className="rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
+                >
+                  Profile
+                </button>
+
+                <button
+                  onClick={() => navigate(`/parent/dashboard/${parentId}`)}
+                  className="rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
+                >
+                  Back to Dashboard
+                </button>
+
+                <button
+                  onClick={() => navigate(`/submit-feedback/${parentId}`)}
+                  className="rounded-xl bg-[#b08d57] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#c39a5f]"
+                >
+                  Submit Feedback
+                </button>
+
+                <button
+                  onClick={handleLogout}
+                  className="rounded-xl bg-[#f1e7d7] px-5 py-2.5 font-semibold text-black shadow-sm transition hover:bg-[#e5d7c1]"
+                >
+                  Logout
+                </button>
+              </div>
             </div>
           </div>
         </header>
@@ -653,7 +800,7 @@ const FeedbackHistory = () => {
                       <tr>
                         <th
                           onClick={() => toggleSort("teacher")}
-                          className="cursor-pointer px-4 py-2 text-left text-sm font-semibold text-[#6b7280] select-none"
+                          className="cursor-pointer select-none px-4 py-2 text-left text-sm font-semibold text-[#6b7280]"
                         >
                           Teacher{getSortIndicator(teacherSort)}
                         </th>
@@ -668,7 +815,7 @@ const FeedbackHistory = () => {
 
                         <th
                           onClick={() => toggleSort("rating")}
-                          className="cursor-pointer px-4 py-2 text-left text-sm font-semibold text-[#6b7280] select-none"
+                          className="cursor-pointer select-none px-4 py-2 text-left text-sm font-semibold text-[#6b7280]"
                         >
                           Rating{getSortIndicator(ratingSort)}
                         </th>
@@ -683,7 +830,7 @@ const FeedbackHistory = () => {
 
                         <th
                           onClick={() => toggleSort("submitted")}
-                          className="cursor-pointer px-4 py-2 text-left text-sm font-semibold text-[#6b7280] select-none"
+                          className="cursor-pointer select-none px-4 py-2 text-left text-sm font-semibold text-[#6b7280]"
                         >
                           Submitted On{getSortIndicator(submittedSort)}
                         </th>
@@ -698,11 +845,14 @@ const FeedbackHistory = () => {
                       {paginatedFeedback.length > 0 ? (
                         paginatedFeedback.map((item, index) => {
                           const status =
-                            item.TeacherResponse && item.TeacherResponse.trim() !== ""
+                            item.TeacherResponse &&
+                              item.TeacherResponse.trim() !== ""
                               ? "Responded"
                               : "Pending";
 
-                          const formattedDateTime = formatDateTime(item.SubmittedAt);
+                          const formattedDateTime = formatDateTime(
+                            item.SubmittedAt
+                          );
 
                           return (
                             <tr
@@ -712,48 +862,59 @@ const FeedbackHistory = () => {
                               <td className="rounded-l-xl px-4 py-4 font-medium text-[#1a1a1a]">
                                 {item.TeacherName || "N/A"}
                               </td>
+
                               <td className="px-4 py-4 text-[#1a1a1a]">
                                 {item.SubjectName || "N/A"}
                               </td>
+
                               <td className="px-4 py-4 text-[#1a1a1a]">
                                 {item.CategoryName || "N/A"}
                               </td>
+
                               <td className="px-4 py-4 text-[#1a1a1a]">
                                 {item.Rating ? `${item.Rating}/5` : "N/A"}
                               </td>
-                              <td className="max-w-[200px] px-4 py-4 text-[#1a1a1a]">
-                                <p className="line-clamp-3">
-                                  {item.Comments || "N/A"}
-                                </p>
+
+                              <td className="max-w-[170px] px-4 py-4 text-[#1a1a1a]">
+                                <TruncatedText text={item.Comments} lines={1} />
                               </td>
-                              <td className="max-w-[200px] px-4 py-4 text-[#1a1a1a]">
-                                <p className="line-clamp-3">
-                                  {item.TeacherResponse || "No response yet"}
-                                </p>
+
+                              <td className="max-w-[170px] px-4 py-4 text-[#1a1a1a]">
+                                <TruncatedText
+                                  text={item.TeacherResponse}
+                                  lines={1}
+                                  emptyText="No response yet"
+                                />
                               </td>
+
                               <td className="px-4 py-4 text-[#1a1a1a]">
-                                <div className="inline-flex flex-col rounded-xl border border-[#e7dbc9] bg-white px-3 py-2 shadow-sm">
+                                <div className="flex w-[190px] flex-col rounded-xl border border-[#e7dbc9] bg-white px-3 py-2 shadow-sm">
                                   <div className="flex items-center gap-2 whitespace-nowrap">
                                     <span className="text-sm">🗓️</span>
-                                    <p className="text-sm font-semibold text-[#1a1a1a] whitespace-nowrap">
+                                    <p className="whitespace-nowrap text-sm font-semibold text-[#1a1a1a]">
                                       {formattedDateTime.date}
                                     </p>
                                   </div>
 
-                                  <div className="mt-1 flex items-center gap-2">
+                                  <div className="mt-1 grid grid-cols-[auto_1fr_80px] items-center gap-2">
                                     <span className="text-xs">🕒</span>
-                                    <p className="text-xs text-[#6b7280]">
-                                      {formattedDateTime.time}
+
+                                    <p className="whitespace-nowrap text-xs text-[#6b7280]">
+                                      {formattedDateTime.time || "-"}
                                     </p>
 
-                                    {formattedDateTime.relative && (
-                                      <span className="rounded-full bg-[#eee6d8] px-2 py-0.5 text-[11px] font-semibold text-[#8d6b3f] whitespace-nowrap">
-                                        {formattedDateTime.relative}
-                                      </span>
-                                    )}
+                                    <span
+                                      className={`inline-block w-20 whitespace-nowrap rounded-full px-2 py-0.5 text-center text-[11px] font-semibold ${formattedDateTime.relative
+                                        ? "bg-[#eee6d8] text-[#8d6b3f]"
+                                        : "invisible bg-[#eee6d8] text-[#8d6b3f]"
+                                        }`}
+                                    >
+                                      {formattedDateTime.relative || "-"}
+                                    </span>
                                   </div>
                                 </div>
                               </td>
+
                               <td className="rounded-r-xl px-4 py-4">
                                 <span
                                   className={`rounded-full px-3 py-1 text-xs font-semibold ${status === "Responded"
@@ -784,10 +945,13 @@ const FeedbackHistory = () => {
                 {/* Desktop pagination inside same section */}
                 {filteredFeedback.length > 0 && totalPages > 1 && (
                   <div className="mt-6 flex flex-col items-center gap-4 border-t border-[#eadcc8] pt-6">
-                    <p className="text-sm text-[#6b7280] text-center">
+                    <p className="text-center text-sm text-[#6b7280]">
                       Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
-                      {Math.min(currentPage * ITEMS_PER_PAGE, filteredFeedback.length)} of{" "}
-                      {filteredFeedback.length} records
+                      {Math.min(
+                        currentPage * ITEMS_PER_PAGE,
+                        filteredFeedback.length
+                      )}{" "}
+                      of {filteredFeedback.length} records
                     </p>
 
                     <div className="flex flex-wrap items-center justify-center gap-2">
@@ -856,7 +1020,8 @@ const FeedbackHistory = () => {
                 {paginatedFeedback.length > 0 ? (
                   paginatedFeedback.map((item, index) => {
                     const status =
-                      item.TeacherResponse && item.TeacherResponse.trim() !== ""
+                      item.TeacherResponse &&
+                        item.TeacherResponse.trim() !== ""
                         ? "Responded"
                         : "Pending";
 
@@ -890,14 +1055,18 @@ const FeedbackHistory = () => {
 
                         <div className="mt-4 space-y-3 text-sm">
                           <div className="rounded-xl bg-[#f7f1e8] p-3">
-                            <p className="font-semibold text-[#1a1a1a]">Rating</p>
+                            <p className="font-semibold text-[#1a1a1a]">
+                              Rating
+                            </p>
                             <p className="mt-1 text-[#6b7280]">
                               {item.Rating ? `${item.Rating}/5` : "N/A"}
                             </p>
                           </div>
 
                           <div className="rounded-xl bg-[#f7f1e8] p-3">
-                            <p className="font-semibold text-[#1a1a1a]">Comments</p>
+                            <p className="font-semibold text-[#1a1a1a]">
+                              Comments
+                            </p>
                             <p className="mt-1 text-[#6b7280]">
                               {item.Comments || "N/A"}
                             </p>
@@ -916,10 +1085,11 @@ const FeedbackHistory = () => {
                             <p className="font-semibold text-[#1a1a1a]">
                               Submitted Date
                             </p>
+
                             <div className="mt-2 rounded-xl border border-[#e7dbc9] bg-white px-3 py-3">
                               <div className="flex items-center gap-2 whitespace-nowrap">
                                 <span>🗓️</span>
-                                <p className="font-medium text-[#1a1a1a] whitespace-nowrap">
+                                <p className="whitespace-nowrap font-medium text-[#1a1a1a]">
                                   {formattedDateTime.date}
                                 </p>
                               </div>
@@ -931,7 +1101,7 @@ const FeedbackHistory = () => {
                                 </p>
 
                                 {formattedDateTime.relative && (
-                                  <span className="rounded-full bg-[#eee6d8] px-2 py-0.5 text-[11px] font-semibold text-[#8d6b3f] whitespace-nowrap">
+                                  <span className="whitespace-nowrap rounded-full bg-[#eee6d8] px-2 py-0.5 text-[11px] font-semibold text-[#8d6b3f]">
                                     {formattedDateTime.relative}
                                   </span>
                                 )}
@@ -953,8 +1123,11 @@ const FeedbackHistory = () => {
                   <div className="rounded-2xl border border-[#d6c2a8] bg-[#fffaf3] p-4 shadow-md">
                     <p className="mb-4 text-center text-sm text-[#6b7280]">
                       Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
-                      {Math.min(currentPage * ITEMS_PER_PAGE, filteredFeedback.length)} of{" "}
-                      {filteredFeedback.length} records
+                      {Math.min(
+                        currentPage * ITEMS_PER_PAGE,
+                        filteredFeedback.length
+                      )}{" "}
+                      of {filteredFeedback.length} records
                     </p>
 
                     <div className="flex flex-wrap items-center justify-center gap-2">

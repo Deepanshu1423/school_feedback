@@ -51,13 +51,20 @@ const getTeacherFeedbackList = (teacherId, callback) => {
 
   db.query(query, [teacherId], callback);
 };
-const addTeacherResponse = (feedbackId, teacherId, teacherResponse, callback) => {
+const addTeacherResponse = (
+  feedbackId,
+  teacherId,
+  teacherResponse,
+  callback,
+) => {
   const query = `
     UPDATE user_Feedback
     SET
       TeacherResponse = ?,
       TeacherRespondedAt = NOW()
-    WHERE FeedbackId = ? AND TeacherId = ?
+    WHERE FeedbackId = ?
+      AND TeacherId = ?
+      AND (TeacherResponse IS NULL OR TeacherResponse = '')
   `;
 
   db.query(query, [teacherResponse, feedbackId, teacherId], callback);
@@ -123,10 +130,26 @@ const getTeacherRecentComments = (teacherId, callback) => {
   db.query(query, [teacherId], callback);
 };
 
-module.exports = {getTeacherFeedbackList,
+const getFeedbackForResponse = (feedbackId, teacherId, callback) => {
+  const query = `
+    SELECT
+      FeedbackId,
+      TeacherId,
+      TeacherResponse
+    FROM user_Feedback
+    WHERE FeedbackId = ?
+      AND TeacherId = ?
+    LIMIT 1
+  `;
+
+  db.query(query, [feedbackId, teacherId], callback);
+};
+
+module.exports = {
+  getTeacherFeedbackList,
   addTeacherResponse,
   getTeacherDashboardSummary,
   getTeacherSubjectWiseSummary,
   getTeacherRecentComments,
-  
+  getFeedbackForResponse,
 };
