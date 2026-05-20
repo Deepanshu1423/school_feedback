@@ -62,6 +62,23 @@ const TeachersManagement = () => {
     };
   };
 
+    // =========================================
+  // Validate Indian mobile number
+  // Rules:
+  // - Must be exactly 10 digits
+  // - Must start with 6, 7, 8, or 9
+  // - Same digit should not repeat 10 times
+  //   Example invalid: 0000000000, 1111111111, 9999999999
+  // =========================================
+  const isValidIndianMobile = (value) => {
+    const mobile = String(value || "").trim();
+
+    const validPattern = /^[6-9]\d{9}$/.test(mobile);
+    const repeatedDigits = /^(\d)\1{9}$/.test(mobile);
+
+    return validPattern && !repeatedDigits;
+  };
+
   // =========================================
   // Fetch teachers from backend
   // =========================================
@@ -191,8 +208,10 @@ const TeachersManagement = () => {
       return;
     }
 
-    if (!/^\d{10}$/.test(formData.mobile)) {
-      setError("Mobile number must be exactly 10 digits");
+        if (!isValidIndianMobile(formData.mobile)) {
+      setError(
+        "Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9"
+      );
       return;
     }
 

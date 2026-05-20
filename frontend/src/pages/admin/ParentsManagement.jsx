@@ -71,6 +71,23 @@ const ParentsManagement = () => {
   };
 
   // =========================================
+  // Validate Indian mobile number
+  // Rules:
+  // - Must be exactly 10 digits
+  // - Must start with 6, 7, 8, or 9
+  // - Same digit should not repeat 10 times
+  //   Example invalid: 0000000000, 1111111111, 9999999999
+  // =========================================
+  const isValidIndianMobile = (value) => {
+    const mobile = String(value || "").trim();
+
+    const validPattern = /^[6-9]\d{9}$/.test(mobile);
+    const repeatedDigits = /^(\d)\1{9}$/.test(mobile);
+
+    return validPattern && !repeatedDigits;
+  };
+
+  // =========================================
   // Fetch parents from backend
   // =========================================
   const fetchParents = async () => {
@@ -221,16 +238,20 @@ const ParentsManagement = () => {
       return;
     }
 
-    if (!/^\d{10}$/.test(formData.mobile.trim())) {
-      setError("Mobile number must be exactly 10 digits");
+    if (!isValidIndianMobile(formData.mobile)) {
+      setError(
+        "Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9",
+      );
       return;
     }
 
     if (
       formData.alternateMobile &&
-      !/^\d{10}$/.test(formData.alternateMobile.trim())
+      !isValidIndianMobile(formData.alternateMobile)
     ) {
-      setError("Alternate mobile number must be exactly 10 digits");
+      setError(
+        "Please enter a valid alternate mobile number starting with 6, 7, 8, or 9",
+      );
       return;
     }
 
@@ -267,7 +288,7 @@ const ParentsManagement = () => {
           payload,
           {
             headers: getAuthHeaders(),
-          }
+          },
         );
       } else {
         response = await axios.post("/admin/create-parent", payload, {
@@ -282,8 +303,8 @@ const ParentsManagement = () => {
           editingParentId
             ? response.data.message || "Parent updated successfully"
             : createdCode
-            ? `Parent created successfully. Parent Code: ${createdCode}`
-            : response.data.message || "Parent created successfully"
+              ? `Parent created successfully. Parent Code: ${createdCode}`
+              : response.data.message || "Parent created successfully",
         );
 
         fetchParents();
@@ -297,7 +318,7 @@ const ParentsManagement = () => {
         err.response?.data?.message ||
           (editingParentId
             ? "Failed to update parent"
-            : "Failed to create parent")
+            : "Failed to create parent"),
       );
     } finally {
       setLoading(false);
@@ -311,7 +332,7 @@ const ParentsManagement = () => {
     const actionText = newStatus === 1 ? "activate" : "deactivate";
 
     const confirmAction = window.confirm(
-      `Are you sure you want to ${actionText} this parent?`
+      `Are you sure you want to ${actionText} this parent?`,
     );
 
     if (!confirmAction) return;
@@ -325,7 +346,7 @@ const ParentsManagement = () => {
         { isActive: newStatus },
         {
           headers: getAuthHeaders(),
-        }
+        },
       );
 
       if (response.data.success) {
@@ -333,7 +354,7 @@ const ParentsManagement = () => {
           response.data.message ||
             `Parent ${
               newStatus === 1 ? "activated" : "deactivated"
-            } successfully`
+            } successfully`,
         );
         fetchParents();
       }
@@ -403,8 +424,8 @@ const ParentsManagement = () => {
         parentCodeSortOrder === ""
           ? "asc"
           : parentCodeSortOrder === "asc"
-          ? "desc"
-          : "";
+            ? "desc"
+            : "";
       setParentCodeSortOrder(nextSort);
       setNameSortOrder("");
       setDateSortOrder("");
@@ -423,8 +444,8 @@ const ParentsManagement = () => {
         dateSortOrder === ""
           ? "latest"
           : dateSortOrder === "latest"
-          ? "oldest"
-          : "";
+            ? "oldest"
+            : "";
       if (dateSortOrder === "oldest") {
         setDateSortOrder("");
       } else {
@@ -469,8 +490,8 @@ const ParentsManagement = () => {
         statusFilter === "all"
           ? true
           : statusFilter === "active"
-          ? parent.IsActive === 1 || parent.IsActive === true
-          : parent.IsActive === 0 || parent.IsActive === false;
+            ? parent.IsActive === 1 || parent.IsActive === true
+            : parent.IsActive === 0 || parent.IsActive === false;
 
       return matchesSearch && matchesStatus;
     });
@@ -480,30 +501,30 @@ const ParentsManagement = () => {
         (a.ParentCode || "").localeCompare(b.ParentCode || "", undefined, {
           numeric: true,
           sensitivity: "base",
-        })
+        }),
       );
     } else if (parentCodeSortOrder === "desc") {
       result = [...result].sort((a, b) =>
         (b.ParentCode || "").localeCompare(a.ParentCode || "", undefined, {
           numeric: true,
           sensitivity: "base",
-        })
+        }),
       );
     } else if (nameSortOrder === "asc") {
       result = [...result].sort((a, b) =>
-        (a.FullName || "").localeCompare(b.FullName || "")
+        (a.FullName || "").localeCompare(b.FullName || ""),
       );
     } else if (nameSortOrder === "desc") {
       result = [...result].sort((a, b) =>
-        (b.FullName || "").localeCompare(a.FullName || "")
+        (b.FullName || "").localeCompare(a.FullName || ""),
       );
     } else if (dateSortOrder === "latest") {
       result = [...result].sort(
-        (a, b) => new Date(b.CreatedAt || 0) - new Date(a.CreatedAt || 0)
+        (a, b) => new Date(b.CreatedAt || 0) - new Date(a.CreatedAt || 0),
       );
     } else if (dateSortOrder === "oldest") {
       result = [...result].sort(
-        (a, b) => new Date(a.CreatedAt || 0) - new Date(b.CreatedAt || 0)
+        (a, b) => new Date(a.CreatedAt || 0) - new Date(b.CreatedAt || 0),
       );
     }
 
@@ -522,7 +543,7 @@ const ParentsManagement = () => {
   // =========================================
   const activeParentsCount = useMemo(() => {
     return parents.filter(
-      (parent) => parent.IsActive === 1 || parent.IsActive === true
+      (parent) => parent.IsActive === 1 || parent.IsActive === true,
     ).length;
   }, [parents]);
 
@@ -835,7 +856,7 @@ const ParentsManagement = () => {
                   Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
                   {Math.min(
                     currentPage * ITEMS_PER_PAGE,
-                    filteredParents.length
+                    filteredParents.length,
                   )}{" "}
                   of {filteredParents.length} parents
                 </p>
@@ -877,7 +898,7 @@ const ParentsManagement = () => {
                       >
                         {page}
                       </button>
-                    )
+                    ),
                   )}
 
                   <button
@@ -1053,7 +1074,7 @@ const ParentsManagement = () => {
                               onClick={() =>
                                 handleParentStatusChange(
                                   parent.ParentId,
-                                  parent.IsActive ? 0 : 1
+                                  parent.IsActive ? 0 : 1,
                                 )
                               }
                               className={`hover:underline ${
@@ -1077,7 +1098,7 @@ const ParentsManagement = () => {
                       Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
                       {Math.min(
                         currentPage * ITEMS_PER_PAGE,
-                        filteredParents.length
+                        filteredParents.length,
                       )}{" "}
                       of {filteredParents.length} parents
                     </p>
@@ -1119,7 +1140,7 @@ const ParentsManagement = () => {
                           >
                             {page}
                           </button>
-                        )
+                        ),
                       )}
 
                       <button
@@ -1316,8 +1337,8 @@ const ParentsManagement = () => {
                         ? "Updating..."
                         : "Saving..."
                       : editingParentId
-                      ? "Update Parent"
-                      : "Create Parent"}
+                        ? "Update Parent"
+                        : "Create Parent"}
                   </button>
 
                   <button

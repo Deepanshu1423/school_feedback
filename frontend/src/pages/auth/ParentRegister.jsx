@@ -74,6 +74,24 @@ const ParentRegister = () => {
     setMessageType(type);
   };
 
+
+    // =========================================
+  // Validate Indian mobile number
+  // Rules:
+  // - Must be exactly 10 digits
+  // - Must start with 6, 7, 8, or 9
+  // - Same digit should not repeat 10 times
+  //   Invalid examples: 0000000000, 1111111111, 9999999999
+  // =========================================
+  const isValidIndianMobile = (value) => {
+    const mobile = String(value || "").trim();
+
+    const validPattern = /^[6-9]\d{9}$/.test(mobile);
+    const repeatedDigits = /^(\d)\1{9}$/.test(mobile);
+
+    return validPattern && !repeatedDigits;
+  };
+
   // =========================================
   // Step 1 validation before sending OTP
   // Address is NOT required
@@ -89,8 +107,10 @@ const ParentRegister = () => {
       return false;
     }
 
-    if (!/^\d{10}$/.test(formData.mobile)) {
-      showMessage("Mobile number must be exactly 10 digits");
+        if (!isValidIndianMobile(formData.mobile)) {
+      showMessage(
+        "Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9"
+      );
       return false;
     }
 
@@ -215,6 +235,13 @@ const ParentRegister = () => {
       return;
     }
 
+        if (!isValidIndianMobile(formData.mobile)) {
+      showMessage(
+        "Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9"
+      );
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -256,6 +283,13 @@ const ParentRegister = () => {
 
     if (!formData.mobile) {
       showMessage("Mobile number is missing");
+      return;
+    }
+
+        if (!isValidIndianMobile(formData.mobile)) {
+      showMessage(
+        "Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9"
+      );
       return;
     }
 
