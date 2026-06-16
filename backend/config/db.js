@@ -1,4 +1,5 @@
 const mysql = require("mysql2");
+require("dotenv").config();
 
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
@@ -7,9 +8,6 @@ const db = mysql.createConnection({
   database: process.env.DB_NAME,
   port: Number(process.env.DB_PORT) || 3306,
 
-  // For cloud MySQL like Aiven, SSL is required.
-  // Local MySQL ke liye DB_SSL=false ya empty rakho.
-  // Aiven/Render ke liye DB_SSL=true rakho.
   ssl:
     process.env.DB_SSL === "true"
       ? {
