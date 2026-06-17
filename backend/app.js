@@ -10,43 +10,59 @@ const adminRoutes = require("./routes/adminRoutes");
 const app = express();
 
 /*
-  Allowed frontend URLs.
+  CORS Setup
 
-  Local development:
+  Local frontend:
   - http://localhost:5173
   - http://127.0.0.1:5173
 
-  Production:
-  - Add your Vercel frontend URL in backend .env as FRONTEND_URLS
-  Example:
-  FRONTEND_URLS=https://your-project.vercel.app
+  Production frontend:
+  - https://school-feedback-eight.vercel.app
+
+  Render Environment Variables supported:
+  FRONTEND_URL=https://school-feedback-eight.vercel.app
+  FRONTEND_URLS=https://school-feedback-eight.vercel.app,https://another-url.vercel.app
 */
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
+
+const envFrontendUrls = [
+  process.env.FRONTEND_URL,
   ...(process.env.FRONTEND_URLS
     ? process.env.FRONTEND_URLS.split(",").map((url) => url.trim())
     : []),
-];
+].filter(Boolean);
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow Thunder Client, Postman, or server-to-server requests
-      if (!origin) {
-        return callback(null, true);
-      }
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:5174",
+  "http://192.168.1.13:5173",
+  "https://school-feedback-eight.vercel.app",
+  ...envFrontendUrls,
+].map((url) => url.replace(/\/$/, ""));
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow Postman, Thunder Client, server-to-server, same-origin requests
+    if (!origin) {
+      return callback(null, true);
+    }
 
-      return callback(new Error("Not allowed by CORS"));
-    },
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+    const cleanOrigin = origin.replace(/\/$/, "");
+
+    if (allowedOrigins.includes(cleanOrigin)) {
+      return callback(null, true);
+    }
+
+    console.log("Blocked by CORS:", cleanOrigin);
+    return callback(new Error("Not allowed by CORS"));
+  },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 
 app.use(express.json());
 
